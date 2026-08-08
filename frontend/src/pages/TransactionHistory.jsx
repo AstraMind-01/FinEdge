@@ -27,7 +27,7 @@ export const TransactionHistory = () => {
   if (loading) return <LoadingSpinner text="Fetching transaction records..." />;
 
   return (
-    <div className="container">
+    <div className="container animate-slide-up">
       <h1>Transaction Audit Trail</h1>
       <p className="subtitle">Comprehensive history of all financial activities associated with your account profile</p>
 
@@ -52,8 +52,8 @@ export const TransactionHistory = () => {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((tx) => (
-                <tr key={tx.id}>
+              {transactions.map((tx, idx) => (
+                <tr key={tx.id} className={`animate-slide-up stagger-${Math.min(idx + 1, 6)}`}>
                   <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{tx.transactionRef}</td>
                   <td><span className="badge badge-info">{tx.type}</span></td>
                   <td style={{ fontSize: '0.85rem' }}>{tx.fromAccountNumber || '—'}</td>

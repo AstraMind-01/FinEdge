@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     setAuthError(null);
     try {
-      const response = await apiClient.post('/api/v1/auth/login', { username, password });
+      const response = await apiClient.post('/api/v1/auth/login', { usernameOrEmail: username, password });
       const { accessToken: access, refreshToken: refresh } = response.data;
       setAccessToken(access);
       setRefreshToken(refresh);

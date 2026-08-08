@@ -16,12 +16,12 @@ export const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="nav-container">
-        <Link to="/dashboard" className="brand">
-          <span>FinEdge</span>
+        <Link to="/dashboard" className="brand animate-scale-up">
+          <span>FinEdge<span style={{ color: 'var(--color-accent)' }}>.</span></span>
           <span className="brand-badge">{isAdmin ? 'ADMIN' : 'BANKING'}</span>
         </Link>
 
-        <div className="nav-links">
+        <div className="nav-links animate-slide-up">
           <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             Dashboard
           </NavLink>
@@ -49,7 +49,7 @@ export const Navbar = () => {
             </>
           )}
 
-          <button onClick={handleLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          <button onClick={handleLogout} className="btn btn-outline-gold" style={{ marginLeft: '1rem' }}>
             Logout ({user.username})
           </button>
         </div>

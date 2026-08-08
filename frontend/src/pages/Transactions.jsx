@@ -107,7 +107,7 @@ export const Transactions = () => {
   if (loading) return <LoadingSpinner text="Loading accounts..." />;
 
   return (
-    <div className="container">
+    <div className="container animate-slide-up">
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <h1>Financial Operations</h1>
         <p className="subtitle">Execute secure deposits, withdrawals, and peer transfers</p>
@@ -131,15 +131,20 @@ export const Transactions = () => {
         )}
 
         {successMsg && (
-          <div className="alert alert-success">
-            <div>
-              <strong>Success: </strong>
-              <span>{successMsg}</span>
-            </div>
+          <div className="alert alert-success animate-scale-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem' }}>
+            <div style={{ 
+              width: '48px', height: '48px', borderRadius: '50%', 
+              background: 'var(--accent-success)', color: 'white', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.5rem', marginBottom: '1rem',
+              boxShadow: '0 4px 12px rgba(22, 122, 82, 0.2)'
+            }}>✓</div>
+            <h3 style={{ color: 'var(--accent-success)', marginBottom: '0.5rem' }}>Transaction Successful</h3>
+            <span style={{ fontSize: '0.95rem' }}>{successMsg}</span>
           </div>
         )}
 
-        <div className="card">
+        <div className="card animate-slide-up stagger-1">
           <h3 style={{ textTransform: 'capitalize', marginBottom: '1.5rem' }}>{activeTab} Funds</h3>
 
           <form onSubmit={handleTransaction}>

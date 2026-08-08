@@ -4,6 +4,7 @@ import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { useCountUp } from '../hooks/useCountUp';
 
 export const Dashboard = () => {
   const { user } = useAuth();
@@ -51,15 +52,17 @@ export const Dashboard = () => {
     }
   };
 
+  const totalBalance = accounts.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
+  const animatedBalance = useCountUp(totalBalance, 800);
+
   if (loading) return <LoadingSpinner text="Fetching your accounts..." />;
 
-  const totalBalance = accounts.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
-
   return (
-    <div className="container">
+    <div className="container animate-slide-up">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1>Welcome, {user?.username}</h1>
+          <div className="gold-accent-line"></div>
           <p className="subtitle" style={{ marginBottom: 0 }}>Overview of your accounts and assets</p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
@@ -70,18 +73,18 @@ export const Dashboard = () => {
       <ErrorBanner message={error} />
 
       {/* Net Balance Overview Card */}
-      <div className="card" style={{ marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2))' }}>
-        <span className="form-label" style={{ color: 'var(--text-muted)' }}>NET PORTFOLIO VALUE</span>
-        <h2 style={{ fontSize: '2.5rem', color: '#fff', margin: '0.2rem 0' }}>
-          ${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      <div className="card animate-slide-up stagger-1" style={{ marginBottom: '2rem', background: 'var(--color-primary)', border: '1px solid var(--color-accent)' }}>
+        <span className="form-label" style={{ color: 'var(--color-accent-light)' }}>NET PORTFOLIO VALUE</span>
+        <h2 style={{ fontSize: '2.5rem', color: 'var(--text-inverse)', margin: '0.2rem 0' }}>
+          ${animatedBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </h2>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>across {accounts.length} active account(s)</p>
+        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>across {accounts.length} active account(s)</p>
       </div>
 
       <h2>Your Bank Accounts</h2>
 
       {accounts.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+        <div className="card animate-slide-up stagger-2" style={{ textAlign: 'center', padding: '3rem' }}>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>You don't have any open accounts yet.</p>
           <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
             Open Your First Account
@@ -89,8 +92,8 @@ export const Dashboard = () => {
         </div>
       ) : (
         <div className="grid grid-2">
-          {accounts.map((acc) => (
-            <div key={acc.id} className="card" style={{ position: 'relative' }}>
+          {accounts.map((acc, idx) => (
+            <div key={acc.id} className={`card animate-slide-up stagger-${Math.min(idx + 2, 6)}`} style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div>
                   <span className="badge badge-info">{acc.accountType}</span>
@@ -104,7 +107,7 @@ export const Dashboard = () => {
 
               <div style={{ margin: '1.5rem 0' }}>
                 <span className="form-label">AVAILABLE BALANCE</span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff' }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)' }}>
                   ${parseFloat(acc.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </div>
               </div>
@@ -126,7 +129,7 @@ export const Dashboard = () => {
       {showCreateModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)',
+          background: 'rgba(7, 26, 43, 0.8)', backdropFilter: 'blur(5px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div className="card" style={{ maxWidth: '450px', width: '90%' }}>
