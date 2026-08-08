@@ -1,9 +1,128 @@
+# ============================================================================
+# FinEdge API Gateway — Step 14: Full Route Configuration
+# ============================================================================
+# Single entry point for all external client traffic.
+# Each route forwards to a downstream service WITHOUT path stripping,
+# because every service already expects /api/v1/... prefixes.
+#
+# Service ports (local development):
+#   api-gateway:            8080
+#   auth-service:           8081
+#   account-service:        8082
+#   transaction-service:    8083
+#   notification-service:   8084
+#   audit-service:          8085
+#   fraud-detection-service: 8086 (Python/FastAPI)
+# ============================================================================
+
 server:
-  port: 8080
+  port: ${GATEWAY_PORT:8080}
 
 spring:
   application:
     name: api-gateway
+
   cloud:
     gateway:
-      routes: [] # Gateway routes foundation for Step 1
+      # ── Route Definitions ──────────────────────────────────────────────
+      # Routes are evaluated IN ORDER — first match wins.
+      # The internal-block route MUST come before the accounts route.
+      routes:
+
+        # ── BLOCK: Internal account endpoints ─────────────────────────
+        # These endpoints are for service-to-service calls only
+        # (e.g., transaction-service → account-service).
+        # Placing this BEFORE the accounts route ensures it matches first.
+        #
+        # LIMITATION (honest): This only blocks access through the gateway.
+        # Direct-to-port access (localhost:8082) is still possible on the
+        # same network. True isolation requires network policies
+        # (Kubernetes NetworkPolicy, Docker network segmentation) — out of
+        # scope for this college project.
+        - id: account-service-internal-block
+          uri: no://op
+          predicates:
+            - Path=/api/v1/accounts/internal/**
+          filters:
+            - name: InternalBlockFilter
+
+        # ── Auth Service ──────────────────────────────────────────────
+        # Rate limiting applied to auth endpoints to prevent
+        # brute-force login attempts (10 req/10s per IP).
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - name: RateLimitFilter
+
+        # ── Account Service ───────────────────────────────────────────
+        - id: account-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/accounts/**
+
+        # ── Transaction Service ───────────────────────────────────────
+        # Two route entries: /me/transactions and /transactions/**
+        # Both forward to the same service, which has @RequestMapping("/api/v1")
+        - id: transaction-service-me
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/me/transactions
+
+        - id: transaction-service
+          uri: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/transactions/**
+
+        # ── Notification Service ──────────────────────────────────────
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/notifications/**
+
+        # ── Audit Service ─────────────────────────────────────────────
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/audit-logs/**
+
+        # ── Fraud Detection Service ───────────────────────────────────
+        # Normally called service-to-service by transaction-service,
+        # but exposed here for admin/debug access and viva demo.
+        # The fraud-detection-service validates JWTs independently,
+        # so unauthorized external access is already blocked.
+        # A production system would restrict this to admin roles.
+        - id: fraud-detection-service
+          uri: ${FRAUD_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/fraud/**
+
+      # ── Default filters (applied to ALL routes) ─────────────────────
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+
+# ── CORS Configuration ───────────────────────────────────────────────────
+# Centralized at the gateway level. See CorsConfig.java for the bean.
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+# ── Actuator ──────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true
+
+# ── Logging ───────────────────────────────────────────────────────────────
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    com.onlinebanking.apigateway: DEBUG
+  # Step 15: Structured logging with correlation ID from MDC
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [cid=%X{correlationId:-none}] %-5level %logger{36} - %msg%n"
+

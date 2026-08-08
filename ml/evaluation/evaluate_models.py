@@ -134,12 +134,12 @@ def _compute_metrics(model_name: str, y_true, y_pred_proba, y_pred_binary, infer
     return {
         "Model": model_name,
         "ROC-AUC": round(roc_auc, 4),
-        "PR-AUC ★": round(pr_auc, 4),
+        "PR-AUC [*]": round(pr_auc, 4),
         "Precision": round(precision, 4),
-        "Recall ★": round(recall, 4),
+        "Recall [*]": round(recall, 4),
         "F1-Score": round(f1, 4),
         "FPR": round(fpr, 4),
-        "FNR ★": round(fnr, 4),
+        "FNR [*]": round(fnr, 4),
         "Latency (ms/1k)": round(inference_ms_per1k, 2),
         # Keep raw confusion matrix for display
         "_cm": cm,
@@ -169,7 +169,7 @@ def _predict_with_latency(model, X, n_repeats: int = 3):
 
 def _print_confusion_matrix(model_name: str, tn, fp, fn, tp):
     """Prints a text-form confusion matrix."""
-    print(f"\n  Confusion Matrix — {model_name}")
+    print(f"\n  Confusion Matrix -- {model_name}")
     print(f"  {'':20s}  Predicted Legit  Predicted Fraud")
     print(f"  {'Actual Legit':20s}  {tn:>14,}  {fp:>14,}")
     print(f"  {'Actual Fraud':20s}  {fn:>14,}  {tp:>14,}")
@@ -178,22 +178,22 @@ def _print_confusion_matrix(model_name: str, tn, fp, fn, tp):
 def _print_metric_commentary():
     """Prints a short block explaining evaluation philosophy."""
     print("\n" + "=" * 70)
-    print("EVALUATION PHILOSOPHY — WHY ACCURACY DOESN'T MATTER HERE")
+    print("EVALUATION PHILOSOPHY -- WHY ACCURACY DOESN'T MATTER HERE")
     print("=" * 70)
     print("""
-  Dataset: ~3.5% fraud  →  Naive "always-predict-legit" model = 96.5% accuracy.
+  Dataset: ~3.5% fraud  ->  Naive "always-predict-legit" model = 96.5% accuracy.
   Accuracy is misleading. We prioritise:
 
-  ★ PR-AUC (Precision-Recall AUC)
+  [*] PR-AUC (Precision-Recall AUC)
       Best single metric for imbalanced binary classification.
-      Random classifier baseline ≈ 0.035 (the fraud base rate).
+      Random classifier baseline ~= 0.035 (the fraud base rate).
 
-  ★ Recall (Sensitivity)
+  [*] Recall (Sensitivity)
       Fraction of real fraud we detected.
       Every missed fraud = financial loss for customers and the bank.
       A model with high precision but low recall catches fewer fraudsters.
 
-  ★ FNR (False Negative Rate = 1 - Recall)
+  [*] FNR (False Negative Rate = 1 - Recall)
       The most dangerous failure mode: fraud that slips through undetected.
       Lower is better. Aim for FNR < 0.20 in production.
 
@@ -257,7 +257,7 @@ def _evaluate_xgboost(X_val_raw, y_val, tree_preprocessor) -> dict | None:
 
 def main():
     logger.info("=" * 70)
-    logger.info("FinEdge ML Pipeline — Step 12: Model Evaluation")
+    logger.info("FinEdge ML Pipeline -- Step 12: Model Evaluation")
     logger.info("=" * 70)
 
     # ── 1. Re-run data pipeline (same split) ─────────────────────────────
@@ -266,7 +266,7 @@ def main():
     if using_synthetic:
         print(
             "\n" + "!" * 70 + "\n"
-            "!  SYNTHETIC DATA — Results are for pipeline validation only.\n"
+            "!  SYNTHETIC DATA -- Results are for pipeline validation only.\n"
             "!  Download IEEE-CIS CSVs to ml/data/raw/ for real metrics.\n"
             + "!" * 70
         )
@@ -313,27 +313,27 @@ def main():
         _print_confusion_matrix(r["Model"], r["_tn"], r["_fp"], r["_fn"], r["_tp"])
 
     # ── 6. Comparison table ───────────────────────────────────────────────
-    display_cols = ["Model", "ROC-AUC", "PR-AUC ★", "Precision", "Recall ★",
-                    "F1-Score", "FPR", "FNR ★", "Latency (ms/1k)"]
+    display_cols = ["Model", "ROC-AUC", "PR-AUC [*]", "Precision", "Recall [*]",
+                    "F1-Score", "FPR", "FNR [*]", "Latency (ms/1k)"]
     df_results = pd.DataFrame(results)[display_cols]
 
     print("\n" + "=" * 70)
     print("MODEL COMPARISON TABLE")
     if using_synthetic:
-        print("  ★ SYNTHETIC DATA — values are NOT real fraud-detection metrics ★")
+        print("  [!] SYNTHETIC DATA -- values are NOT real fraud-detection metrics [!]")
     print("=" * 70)
     print(df_results.to_string(index=False))
     print()
-    print("  ★ = Highest-priority metrics for fraud detection (see commentary above)")
+    print("  [*] = Highest-priority metrics for fraud detection (see commentary above)")
 
     # ── 7. Save comparison CSV ────────────────────────────────────────────
     csv_path = os.path.join(EVAL_DIR, "model_comparison.csv")
     df_results.to_csv(csv_path, index=False)
-    logger.info(f"✓ Comparison table saved: {csv_path}")
+    logger.info(f"[OK] Comparison table saved: {csv_path}")
 
     # ── 8. Print best model recommendation ───────────────────────────────
-    best_by_prauc = df_results.loc[df_results["PR-AUC ★"].idxmax(), "Model"]
-    best_by_recall = df_results.loc[df_results["Recall ★"].idxmax(), "Model"]
+    best_by_prauc = df_results.loc[df_results["PR-AUC [*]"].idxmax(), "Model"]
+    best_by_recall = df_results.loc[df_results["Recall [*]"].idxmax(), "Model"]
 
     print("\n" + "=" * 70)
     print("QUICK RECOMMENDATION (see model_selection.md for full reasoning)")
@@ -342,11 +342,11 @@ def main():
     print(f"  Best by Recall : {best_by_recall}")
     print()
     if using_synthetic:
-        print("  ⚠  These recommendations are based on SYNTHETIC data.")
+        print("  [!] These recommendations are based on SYNTHETIC data.")
         print("     Retrain with real Kaggle data for meaningful selection.")
     print()
-    print("  → Run: python -m ml.evaluation.evaluate_models  (already done)")
-    print("  → Review: ml/evaluation/model_selection.md")
+    print("  -> Run: python -m ml.evaluation.evaluate_models  (already done)")
+    print("  -> Review: ml/evaluation/model_selection.md")
     print("=" * 70)
 
     # Return results for use by model_selection_writer
