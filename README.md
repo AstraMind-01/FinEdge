@@ -1,96 +1,67 @@
-# Online Banking System using REST APIs and Microservices
+# FinEdge
 
-## Project Objective
-The **Online Banking System** is a production-inspired, educational microservices architecture built to demonstrate modern backend banking capabilities including authentication, account management, financial transactions, audit logging, and notifications using Spring Boot 3.x and Java 21.
+AI-Powered Banking & Fraud Detection Platform
 
-## Architecture Overview
-The system follows a microservices architecture pattern:
-* **Client Interface** → **API Gateway** → **Independent Microservices** → **Dedicated PostgreSQL Databases**
-* **Synchronous Communication**: HTTP / REST APIs via Spring Web & Spring Cloud Gateway.
-* **Asynchronous Communication**: Kafka (planned for future phases).
+## 1. Project Overview
+FinEdge is an intelligent, microservices-based banking and payment platform that integrates real-time transaction processing with AI-driven fraud detection. 
 
-```
-                      +-------------------+
-                      |    API Gateway    |
-                      |   (Port 8080)     |
-                      +---------+---------+
-                                |
-      +-----------------+-------+-------+-----------------+-----------------+
-      |                 |               |                 |                 |
-+-----+-----+     +-----+-----+   +-----+-----+     +-----+-----+     +-----+-----+
-|   Auth    |     |  Account  |   |Transaction|     |Notification|    |   Audit   |
-| Service   |     |  Service  |   |  Service  |     |  Service  |     |  Service  |
-|(Port 8081)|     |(Port 8082)|   |(Port 8083)|     |(Port 8084)|     |(Port 8085)|
-+-----------+     +-----------+   +-----------+     +-----------+     +-----------+
-```
+## 2. Architecture
+The system follows a microservices architecture:
+- **Frontend**: A React-based web application for customers and admins.
+- **API Gateway**: Routes traffic to backend services.
+- **Backend Services**: Java Spring Boot microservices handling core banking functionality (Auth, Account, Transaction, Notification, Audit).
+- **AI/ML Service**: A Python/FastAPI service for evaluating transactions through a machine-learning model (XGBoost/Scikit-learn).
+- **Databases**: Individual PostgreSQL databases per service following the database-per-service pattern.
+- **Event Bus**: Kafka is used for asynchronous communication between services (e.g., triggering notifications upon transactions).
 
-## List of Microservices
-1. **api-gateway** (Port `8080`): Central entry point for API routing and cross-cutting concerns.
-2. **auth-service** (Port `8081`): User registration, authentication, and credentials management.
-3. **account-service** (Port `8082`): Customer bank accounts, balances, and profile operations.
-4. **transaction-service** (Port `8083`): Money transfers, deposits, withdrawals, and ledger history.
-5. **notification-service** (Port `8084`): Email and system alerts for banking activities.
-6. **audit-service** (Port `8085`): Immutable activity logs and security compliance tracing.
+## 3. Repository Structure
+The repository is organized as a monorepo so that cross-functional teams can work independently:
+- `frontend/` - React application code
+- `backend/` - Java Spring Boot microservices
+- `ai-ml/` - Python ML and fraud detection service
+- `database/` - PostgreSQL schemas and migrations
+- `infrastructure/` - Docker, Kafka, and deployment configurations
+- `docs/` - Architecture diagrams, API specs, and project reports
+- `tests/` - Integration and E2E testing
+- `.github/` - GitHub Actions workflows and PR templates
 
-## Technology Stack
-* **Java**: 21 LTS
-* **Framework**: Spring Boot 3.2.5
-* **Cloud Framework**: Spring Cloud 2023.0.1 (Spring Cloud Gateway)
-* **Build Tool**: Apache Maven
-* **Database**: PostgreSQL (per-service isolation)
-* **API Style**: RESTful JSON APIs (`/api/v1/...`)
-* **Utilities**: Lombok
-* **Containerization**: Docker & Docker Compose
-* **IDE**: IntelliJ IDEA
+## 4. Technology Stack
+- **Frontend**: React, Vite, Tailwind CSS (or Vanilla CSS)
+- **Backend**: Java 21, Spring Boot 3.x, Spring Cloud
+- **AI/ML**: Python, FastAPI, Pandas, Scikit-learn, XGBoost
+- **Databases**: PostgreSQL
+- **Messaging**: Apache Kafka, Zookeeper
+- **Infrastructure**: Docker, Docker Compose
 
-## Current Project Status
-* **Step 1 Completed**: Repository foundation, multi-module Maven structure, Spring Boot setup for all 6 microservices, dynamic health check endpoints (`GET /api/v1/health`), package structure initialization, and basic Docker Compose foundation.
+## 5. How Frontend Works
+The frontend is built with React and Vite. It connects to the API Gateway to perform authentication, view accounts, and manage transactions. Developers working on the frontend own the `frontend/` directory.
 
-## How to Run Services Locally
+## 6. How Backend Works
+The backend is a suite of Java Spring Boot microservices. Each service is independently buildable via Maven. Developers modify services inside the `backend/` directory. The parent `pom.xml` in `backend/` manages dependencies for all modules.
 
-### Prerequisites
-* JDK 21 installed (`java -version`)
-* Apache Maven installed (`mvn -version`)
+## 7. How AI/ML Works
+The AI/ML component lives in `ai-ml/`. It includes training scripts, Jupyter notebooks, and a production FastAPI service (`fraud-detection-service`) that evaluates incoming transactions in real time.
 
-### Building the Project
-From the root directory, compile and package all services:
-```bash
-mvn clean package -DskipTests
-```
+## 8. Database Architecture
+Each microservice maintains its own database (e.g., `auth_db`, `account_db`) in PostgreSQL. Schemas and migrations are stored in the `database/` folder to separate infrastructure definitions from application code.
 
-### Running Individual Microservices
-You can run any service using Maven or by running the Spring Boot Application class in your IDE:
+## 9. Kafka Architecture
+Kafka serves as the event backbone. For example, when a transaction occurs, an event is produced to a Kafka topic which the Notification and Audit services consume. Configuration is maintained in `infrastructure/docker-compose.yml`.
 
-* **API Gateway** (Port 8080):
-  ```bash
-  mvn spring-boot:run -pl api-gateway
-  ```
-* **Auth Service** (Port 8081):
-  ```bash
-  mvn spring-boot:run -pl auth-service
-  ```
-* **Account Service** (Port 8082):
-  ```bash
-  mvn spring-boot:run -pl account-service
-  ```
-* **Transaction Service** (Port 8083):
-  ```bash
-  mvn spring-boot:run -pl transaction-service
-  ```
-* **Notification Service** (Port 8084):
-  ```bash
-  mvn spring-boot:run -pl notification-service
-  ```
-* **Audit Service** (Port 8085):
-  ```bash
-  mvn spring-boot:run -pl audit-service
-  ```
+## 10. Docker Setup
+All infrastructure components (Kafka, Zookeeper, PostgreSQL instances) and the AI/ML service are containerized. You can spin up the environment from the `infrastructure/` directory using Docker Compose.
 
-### Verifying Service Health
-Once started, verify each service health endpoint:
-* API Gateway: `curl http://localhost:8080/api/v1/health`
-* Auth Service: `curl http://localhost:8081/api/v1/health`
-* Account Service: `curl http://localhost:8082/api/v1/health`
-* Transaction Service: `curl http://localhost:8083/api/v1/health`
-* Notification Service: `curl http://localhost:8084/api/v1/health`
-* Audit Service: `curl http://localhost:8085/api/v1/health`
+## 11. Local Development
+- Ensure Docker is running.
+- Start infrastructure: `cd infrastructure && docker-compose up -d`
+- Start backend services: Navigate to `backend/` and run `mvn spring-boot:run` for each service, or use the provided scripts in `infrastructure/scripts/`.
+- Start frontend: Navigate to `frontend/` and run `npm run dev`.
+
+## 12. Team Contribution
+- **Developer 1 (Team Lead)**: Owns `backend/transaction-service/`, overall integration, and architecture.
+- **Developer 2 (Backend)**: Owns `backend/auth-service/` and `backend/account-service/`.
+- **Developer 3 (AI/ML)**: Owns `ai-ml/`.
+- **Developer 4 (Frontend + DevOps)**: Owns `frontend/` and `infrastructure/`.
+
+## 13. GitHub Workflow
+All work should be done in feature branches (e.g., `feature/transaction-service`, `feature/fraud-ml`) and merged into `main` via Pull Requests. Do not push directly to `main`. CI/CD workflows in `.github/workflows/` automatically build and test code upon push.

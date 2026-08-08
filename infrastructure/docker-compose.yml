@@ -134,7 +134,7 @@ services:
 
   fraud-detection-service:
     build:
-      context: ./fraud-detection-service
+      context: ../ai-ml/fraud-detection-service
       dockerfile: Dockerfile
     container_name: fraud-detection-service
     ports:
