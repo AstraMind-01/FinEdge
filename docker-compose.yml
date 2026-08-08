@@ -42,8 +42,8 @@ services:
     container_name: auth-db
     environment:
       POSTGRES_DB: auth_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5431:5432"
     volumes:
@@ -61,8 +61,8 @@ services:
     container_name: account-db
     environment:
       POSTGRES_DB: account_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -80,8 +80,8 @@ services:
     container_name: transaction-db
     environment:
       POSTGRES_DB: transaction_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
     volumes:
@@ -99,8 +99,8 @@ services:
     container_name: notification-db
     environment:
       POSTGRES_DB: notification_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5435:5432"
     volumes:
@@ -118,8 +118,8 @@ services:
     container_name: audit-db
     environment:
       POSTGRES_DB: audit_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5434:5432"
     volumes:

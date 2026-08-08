@@ -37,3 +37,9 @@ app:
   kafka:
     topics:
       transaction-events: transaction-events
+
+# Step 15: Structured logging with correlation ID from MDC
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [cid=%X{correlationId:-none}] %-5level %logger{36} - %msg%n"
+

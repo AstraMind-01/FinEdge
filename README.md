@@ -1,91 +1,96 @@
-# FinEdge – AI-Powered Banking & Fraud Detection Platform
+# Online Banking System using REST APIs and Microservices
 
-## 1. Project Overview
-FinEdge is an intelligent, modern microservices-based banking platform that integrates Artificial Intelligence to provide real-time fraud detection, secure transactions, and scalable account management.
+## Project Objective
+The **Online Banking System** is a production-inspired, educational microservices architecture built to demonstrate modern backend banking capabilities including authentication, account management, financial transactions, audit logging, and notifications using Spring Boot 3.x and Java 21.
 
-## 2. Problem Statement
-Traditional banking systems struggle with monolithic architectures, high latency, and rule-based fraud detection systems that are slow to adapt to new threats. FinEdge solves this by adopting a microservices architecture for scalability and embedding a machine learning pipeline to proactively identify anomalous and fraudulent transactions in real-time.
+## Architecture Overview
+The system follows a microservices architecture pattern:
+* **Client Interface** → **API Gateway** → **Independent Microservices** → **Dedicated PostgreSQL Databases**
+* **Synchronous Communication**: HTTP / REST APIs via Spring Web & Spring Cloud Gateway.
+* **Asynchronous Communication**: Kafka (planned for future phases).
 
-## 3. Main Features
-- **User Authentication & Authorization**: Secure JWT-based access control with role management.
-- **Account Management**: Create and manage bank accounts, balances, and ownership.
-- **Transaction Processing**: Handle deposits, withdrawals, and secure transfers with idempotency.
-- **AI Fraud Detection**: Real-time evaluation of transactions using trained ML models to generate risk scores.
-- **Audit & Notification**: Asynchronous event-driven architecture using Kafka to notify users and audit all actions.
+```
+                      +-------------------+
+                      |    API Gateway    |
+                      |   (Port 8080)     |
+                      +---------+---------+
+                                |
+      +-----------------+-------+-------+-----------------+-----------------+
+      |                 |               |                 |                 |
++-----+-----+     +-----+-----+   +-----+-----+     +-----+-----+     +-----+-----+
+|   Auth    |     |  Account  |   |Transaction|     |Notification|    |   Audit   |
+| Service   |     |  Service  |   |  Service  |     |  Service  |     |  Service  |
+|(Port 8081)|     |(Port 8082)|   |(Port 8083)|     |(Port 8084)|     |(Port 8085)|
++-----------+     +-----------+   +-----------+     +-----------+     +-----------+
+```
 
-## 4. Architecture
-FinEdge uses a distributed microservices architecture coordinated via an API Gateway. Services communicate synchronously via REST and asynchronously via Apache Kafka.
+## List of Microservices
+1. **api-gateway** (Port `8080`): Central entry point for API routing and cross-cutting concerns.
+2. **auth-service** (Port `8081`): User registration, authentication, and credentials management.
+3. **account-service** (Port `8082`): Customer bank accounts, balances, and profile operations.
+4. **transaction-service** (Port `8083`): Money transfers, deposits, withdrawals, and ledger history.
+5. **notification-service** (Port `8084`): Email and system alerts for banking activities.
+6. **audit-service** (Port `8085`): Immutable activity logs and security compliance tracing.
 
-## 5. Microservices
-- **API Gateway**: Central entry point routing traffic to appropriate backend services.
-- **Auth Service**: Handles registration, login, and JWT token issuance.
-- **Account Service**: Manages customer bank accounts and balances.
-- **Transaction Service**: Core engine for processing financial movements.
-- **Fraud Detection Service**: Python/FastAPI service exposing ML inference for transaction risk scoring.
-- **Notification Service**: Consumes Kafka events to send alerts to users.
-- **Audit Service**: Immutable ledger for compliance and system auditing.
+## Technology Stack
+* **Java**: 21 LTS
+* **Framework**: Spring Boot 3.2.5
+* **Cloud Framework**: Spring Cloud 2023.0.1 (Spring Cloud Gateway)
+* **Build Tool**: Apache Maven
+* **Database**: PostgreSQL (per-service isolation)
+* **API Style**: RESTful JSON APIs (`/api/v1/...`)
+* **Utilities**: Lombok
+* **Containerization**: Docker & Docker Compose
+* **IDE**: IntelliJ IDEA
 
-## 6. AI/ML Fraud Detection
-The AI pipeline consumes transaction data and outputs a fraud probability score. Transactions exceeding the risk threshold are flagged for manual review or automatically declined. Models are evaluated based on Precision, Recall, and F1-score to minimize false positives.
+## Current Project Status
+* **Step 1 Completed**: Repository foundation, multi-module Maven structure, Spring Boot setup for all 6 microservices, dynamic health check endpoints (`GET /api/v1/health`), package structure initialization, and basic Docker Compose foundation.
 
-## 7. Technology Stack
-- **Backend Core**: Java 21, Spring Boot, Spring Cloud, Microservices
-- **AI/ML**: Python, FastAPI, Scikit-learn, Pandas, NumPy
-- **Database**: PostgreSQL
-- **Messaging**: Apache Kafka
-- **Containerization**: Docker, Docker Compose
-- **Frontend**: React (Planned)
+## How to Run Services Locally
 
-## 8. Dataset Information
-The machine learning models are trained on historical, anonymized financial transaction datasets with labeled fraudulent events.
+### Prerequisites
+* JDK 21 installed (`java -version`)
+* Apache Maven installed (`mvn -version`)
 
-## 9. ML Pipeline
-- **Preprocessing**: Imputation, scaling, and categorical encoding.
-- **Feature Engineering**: Deriving velocity metrics, transaction frequencies, and historical behavior.
-- **Modeling**: Logistic Regression, Random Forest, XGBoost benchmark.
-- **Inference**: Exposed via a high-performance FastAPI endpoint.
+### Building the Project
+From the root directory, compile and package all services:
+```bash
+mvn clean package -DskipTests
+```
 
-## 10. Transaction Flow
-1. User initiates a transfer via API Gateway.
-2. API Gateway routes to Transaction Service.
-3. Transaction Service verifies JWT and Account ownership via Auth and Account Services.
-4. Transaction Service synchronously calls Fraud Detection Service for a risk score.
-5. If approved, balances are updated and an event is published to Kafka.
-6. Notification and Audit services consume the event for further processing.
+### Running Individual Microservices
+You can run any service using Maven or by running the Spring Boot Application class in your IDE:
 
-## 11. API Information
-The APIs are RESTful, documented via OpenAPI/Swagger (available at each service's `/v3/api-docs` endpoint), and secured with Bearer Tokens.
+* **API Gateway** (Port 8080):
+  ```bash
+  mvn spring-boot:run -pl api-gateway
+  ```
+* **Auth Service** (Port 8081):
+  ```bash
+  mvn spring-boot:run -pl auth-service
+  ```
+* **Account Service** (Port 8082):
+  ```bash
+  mvn spring-boot:run -pl account-service
+  ```
+* **Transaction Service** (Port 8083):
+  ```bash
+  mvn spring-boot:run -pl transaction-service
+  ```
+* **Notification Service** (Port 8084):
+  ```bash
+  mvn spring-boot:run -pl notification-service
+  ```
+* **Audit Service** (Port 8085):
+  ```bash
+  mvn spring-boot:run -pl audit-service
+  ```
 
-## 12. Kafka Architecture
-Kafka acts as the central event bus decoupling the core path from auxiliary services. Core topics include `transactions-topic`, `notifications-topic`, and `audit-topic`.
-
-## 13. Database Architecture
-Each microservice owns its database in alignment with the "Database-per-service" pattern, ensuring loose coupling and independent scalability. PostgreSQL is the standard RDBMS used.
-
-## 14. Docker Setup
-The entire stack, including PostgreSQL databases, Zookeeper, Kafka, and the microservices, can be spun up using `docker-compose`.
-
-## 15. Local Development Instructions
-1. Clone the repository.
-2. Copy `.env.example` to `.env` and fill in the values.
-3. Start infrastructure services: `docker-compose up -d postgres zookeeper kafka`
-4. Build Java services: `mvn clean install`
-5. Run services locally via your IDE or start all via `docker-compose up -d`.
-
-## 16. Team Contribution
-- **Pritam Sahoo (@AstraMind-01)**: Transaction Service, ML integration, System integration, Architecture
-- **Subhankar Das (@Immortalcoder0)**: Auth Service, Account Service, JWT/security
-- **Rishav (@rishavsingh181)**: Fraud Detection Service, Python/FastAPI, ML preprocessing
-- **Soumyadip Singha (@Simply-Coder-start)**: React frontend, DevOps, Docker, Integration testing
-
-## 17. GitHub Workflow
-- `main` is protected.
-- Create feature branches: `feature/<name>`
-- Create Pull Requests and require at least one review.
-- Never commit secrets to the repository.
-
-## 18. Future Improvements
-- Kubernetes deployment manifests.
-- CI/CD pipelines using GitHub Actions.
-- Enhanced Model explainability (SHAP/LIME).
-- GraphQL API Gateway integration.
+### Verifying Service Health
+Once started, verify each service health endpoint:
+* API Gateway: `curl http://localhost:8080/api/v1/health`
+* Auth Service: `curl http://localhost:8081/api/v1/health`
+* Account Service: `curl http://localhost:8082/api/v1/health`
+* Transaction Service: `curl http://localhost:8083/api/v1/health`
+* Notification Service: `curl http://localhost:8084/api/v1/health`
+* Audit Service: `curl http://localhost:8085/api/v1/health`

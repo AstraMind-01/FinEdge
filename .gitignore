@@ -81,9 +81,13 @@ ml/artifacts/*
 __pycache__/
 *.pyc
 .pytest_cache/
-
-# Additional rules
-!.env.example
-node_modules/
 .venv/
 venv/
+
+# Node & Frontend
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+

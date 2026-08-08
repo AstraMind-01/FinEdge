@@ -1,0 +1,4 @@
+Model,ROC-AUC,PR-AUC [*],Precision,Recall [*],F1-Score,FPR,FNR [*],Latency (ms/1k)
+Logistic Regression,0.6862,0.2292,0.0741,0.4857,0.1285,0.2202,0.5143,0.12
+Random Forest,0.717,0.2231,0.6471,0.1571,0.2529,0.0031,0.8429,20.47
+XGBoost,0.6392,0.1778,0.1086,0.3429,0.1649,0.1021,0.6571,2.62

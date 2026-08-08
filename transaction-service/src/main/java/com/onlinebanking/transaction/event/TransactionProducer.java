@@ -4,6 +4,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,10 @@ public class TransactionProducer {
 
     public void publishEvent(com.onlinebanking.transaction.entity.Transaction transaction) {
         try {
+            // Step 15: Read correlation ID from MDC (set by CorrelationIdLoggingFilter)
+            // and propagate through the Kafka event so downstream consumers can log it.
+            String correlationId = MDC.get("correlationId");
+
             TransactionEvent event = new TransactionEvent(
                     UUID.randomUUID().toString(),
                     transaction.getTransactionRef(),
@@ -32,8 +37,10 @@ public class TransactionProducer {
                     transaction.getInitiatedByUsername(),
                     transaction.getRiskScore(),
                     transaction.getRiskDecision(),
-                    transaction.getCreatedAt()
+                    transaction.getCreatedAt(),
+                    correlationId   // Step 15: threaded from HTTP request MDC
             );
+
 
             log.info("Publishing TransactionEvent [{}] (Risk: {}, Decision: {}) to Kafka topic '{}'",
                     event.transactionRef(), event.riskScore(), event.riskDecision(), topicName);

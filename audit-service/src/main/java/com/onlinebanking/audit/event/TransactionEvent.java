@@ -3,6 +3,12 @@ package com.onlinebanking.audit.event;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Kafka event consumed from transaction-service.
+ *
+ * <p>Step 15: Added {@code correlationId} field. Jackson defaults missing fields
+ * to {@code null} for backward compatibility with pre-Step-15 events.</p>
+ */
 public record TransactionEvent(
         String eventId,
         String transactionRef,
@@ -14,6 +20,7 @@ public record TransactionEvent(
         String initiatedByUsername,
         Double riskScore,
         String riskDecision,
-        LocalDateTime timestamp
+        LocalDateTime timestamp,
+        String correlationId   // Step 15: correlation ID from originating HTTP request
 ) {
 }
