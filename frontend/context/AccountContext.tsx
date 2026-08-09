@@ -3,6 +3,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Account, Transaction, VerificationState, UserProfile } from "../types";
 import { MockApi } from "../lib/mockApi";
+import { AccountApi, TransactionApi } from "../lib/api";
+
+// ─── Feature Flag ─────────────────────────────────────────────────────────────
+// Set NEXT_PUBLIC_USE_MOCK=false in .env.local to switch to the real backend.
+// When true (default), uses in-memory mock data so the app works without a backend.
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
 export interface AppNotification {
   id: string;
@@ -189,38 +195,76 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAccounts = async () => {
     setIsLoading(true);
-    const data = await MockApi.getAccounts();
-    setAccounts(data);
-    
-    const initialStates: Record<string, VerificationState> = {};
-    data.forEach(acc => {
-      if (!verificationStates[acc.id]) {
-        initialStates[acc.id] = "NOT_VERIFIED";
+    try {
+      let data: Account[];
+      if (USE_MOCK) {
+        data = await MockApi.getAccounts();
+      } else {
+        // Real backend: map BackendAccountResponse → Account shape
+        const backendAccounts = await AccountApi.getAccounts();
+        data = backendAccounts.map(acc => ({
+          id: String(acc.id),
+          type: acc.accountType,
+          name: `${acc.accountType.charAt(0) + acc.accountType.slice(1).toLowerCase()} Account`,
+          maskedNumber: `•••• ${acc.accountNumber.slice(-4)}`,
+          lastFour: acc.accountNumber.slice(-4),
+          balance: acc.balance,
+          currency: "INR",
+          status: acc.status,
+          accountHolder: acc.ownerUsername,
+        }));
       }
-    });
-    setVerificationStates(prev => ({ ...initialStates, ...prev }));
-    
-    const activeAccId = selectedAccountId || (data.length > 0 ? data[0].id : null);
-    if (activeAccId) {
-      if (!selectedAccountId) setSelectedAccountId(activeAccId);
-      await fetchTransactions(activeAccId);
+      setAccounts(data);
+      const initialStates: Record<string, VerificationState> = {};
+      data.forEach(acc => {
+        if (!verificationStates[acc.id]) {
+          initialStates[acc.id] = "NOT_VERIFIED";
+        }
+      });
+      setVerificationStates(prev => ({ ...initialStates, ...prev }));
+      const activeAccId = selectedAccountId || (data.length > 0 ? data[0].id : null);
+      if (activeAccId) {
+        if (!selectedAccountId) setSelectedAccountId(activeAccId);
+        await fetchTransactions(activeAccId);
+      }
+    } catch (err) {
+      console.error("[AccountContext] fetchAccounts error:", err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const fetchTransactions = async (accountId: string) => {
-    const data = await MockApi.getTransactions(accountId);
-    setTransactions(data);
+    try {
+      if (USE_MOCK) {
+        const data = await MockApi.getTransactions(accountId);
+        setTransactions(data);
+      } else {
+        // Real backend: fetch all user transactions from /me/transactions
+        const backendTxs = await TransactionApi.getMyTransactions();
+        const data: Transaction[] = backendTxs.map(tx => ({
+          id: String(tx.id),
+          accountId: tx.fromAccountNumber || tx.toAccountNumber || accountId,
+          merchantName: tx.fromAccountNumber
+            ? `Transfer from ${tx.fromAccountNumber.slice(-4)}`
+            : `Deposit to ${tx.toAccountNumber?.slice(-4)}`,
+          amount: tx.type === "WITHDRAWAL" || tx.type === "TRANSFER" ? -Math.abs(tx.amount) : Math.abs(tx.amount),
+          date: new Date(tx.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+          type: tx.type === "DEPOSIT" ? "CREDIT" : "DEBIT",
+          category: "Transfer",
+          status: tx.status,
+          referenceId: tx.transactionRef,
+          timestamp: tx.createdAt,
+        }));
+        setTransactions(data);
+      }
+    } catch (err) {
+      console.error("[AccountContext] fetchTransactions error:", err);
+    }
   };
 
   const refreshAllData = async () => {
-    const data = await MockApi.getAccounts();
-    setAccounts(data);
-    const activeId = selectedAccountId || (data.length > 0 ? data[0].id : "");
-    if (activeId) {
-      const txs = await MockApi.getTransactions(activeId);
-      setTransactions(txs);
-    }
+    await fetchAccounts();
   };
 
   useEffect(() => {
