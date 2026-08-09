@@ -95,7 +95,7 @@ export default function InvestmentsPage() {
       <Sidebar />
       <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
         <Header />
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-[1400px] mx-auto w-full">
+        <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">
           
           {/* Page Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
