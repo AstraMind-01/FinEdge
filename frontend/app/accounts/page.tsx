@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import AccountsHeader from '../../components/accounts/AccountsHeader';
@@ -9,16 +9,19 @@ import AccountsRightSidebar from '../../components/accounts/AccountsRightSidebar
 import AccountTypesFooter from '../../components/accounts/AccountTypesFooter';
 import { AccountProvider, useAccounts } from '../../context/AccountContext';
 import AccountVerificationDialog from '../../components/AccountVerificationDialog';
+import AccountProductModal from '../../components/modals/AccountProductModal';
 
 function AccountsContent() {
-  const { verificationStates, requestVerification } = useAccounts();
+  const { verificationStates, requestVerification, refreshAllData } = useAccounts();
+  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+
   const accountIdToVerify = Object.keys(verificationStates).find(id => verificationStates[id] === "VERIFICATION_REQUIRED");
 
   return (
     <div className="flex-1 flex flex-col lg:pl-[230px] w-full min-h-screen">
       <Header />
       <main className="flex-1 mt-[72px] flex flex-col w-full max-w-[1600px] mx-auto p-6 lg:p-8 gap-6 overflow-x-hidden">
-        <AccountsHeader />
+        <AccountsHeader onOpenAddAccount={() => setIsAddAccountOpen(true)} />
         <AccountsSummaryStrip />
         
         <div className="flex flex-col lg:flex-row gap-6 w-full items-start">
@@ -29,9 +32,20 @@ function AccountsContent() {
           <AccountsRightSidebar />
         </div>
       </main>
+
       <AccountVerificationDialog 
         accountId={accountIdToVerify || null} 
         onClose={() => requestVerification("")} 
+      />
+
+      <AccountProductModal 
+        productId="savings"
+        isOpen={isAddAccountOpen}
+        onClose={() => setIsAddAccountOpen(false)}
+        onOpenAccount={async () => {
+          await refreshAllData();
+          setIsAddAccountOpen(false);
+        }}
       />
     </div>
   );

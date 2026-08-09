@@ -2,7 +2,11 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 
-export default function AccountsHeader() {
+interface AccountsHeaderProps {
+  onOpenAddAccount?: () => void;
+}
+
+export default function AccountsHeader({ onOpenAddAccount }: AccountsHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-4">
       <div className="flex flex-col">
@@ -24,7 +28,10 @@ export default function AccountsHeader() {
             </SelectContent>
           </Select>
         </div>
-        <button className="bg-primary text-on-primary px-4 h-[40px] rounded-lg hover:shadow-[0_0_15px_rgba(240,180,41,0.3)] transition-shadow text-[13px] font-medium flex items-center gap-2">
+        <button 
+          onClick={onOpenAddAccount}
+          className="bg-primary text-on-primary px-4 h-[40px] rounded-lg hover:shadow-[0_0_15px_rgba(240,180,41,0.3)] transition-shadow text-[13px] font-medium flex items-center gap-2 cursor-pointer"
+        >
           <Plus size={16} />
           Add New Account
         </button>

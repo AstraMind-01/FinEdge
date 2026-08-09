@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Landmark, Briefcase, Lock, PiggyBank, ChevronDown, ChevronUp, Eye, EyeOff, FileText, ArrowLeftRight, CreditCard, Calendar, User, Percent, AlertCircle, Settings, Snowflake } from 'lucide-react';
 import { useAccounts } from '../../context/AccountContext';
 import { Card } from '../ui/card';
@@ -19,6 +19,7 @@ export default function AccountList() {
     isLoading, 
     verificationStates, 
     requestVerification, 
+    isAccountVerified,
     hideBalance, 
     selectAccount,
     executeTransfer,
@@ -30,6 +31,18 @@ export default function AccountList() {
   const [expandedCards, setExpandedCards] = useState<string[]>([]);
   const [targetAccount, setTargetAccount] = useState<Account | null>(null);
   const [activeModal, setActiveModal] = useState<"details" | "transfer" | "limits" | "statements" | "freeze" | null>(null);
+  const [pendingDetailsAccId, setPendingDetailsAccId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingDetailsAccId && isAccountVerified(pendingDetailsAccId)) {
+      const acc = accounts.find(a => a.id === pendingDetailsAccId);
+      if (acc) {
+        setTargetAccount(acc);
+        setActiveModal("details");
+      }
+      setPendingDetailsAccId(null);
+    }
+  }, [verificationStates, pendingDetailsAccId, isAccountVerified, accounts]);
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,6 +65,13 @@ export default function AccountList() {
     e.stopPropagation();
     selectAccount(acc.id);
     setTargetAccount(acc);
+    if (modal === "details") {
+      if (!isAccountVerified(acc.id)) {
+        setPendingDetailsAccId(acc.id);
+        requestVerification(acc.id);
+        return;
+      }
+    }
     setActiveModal(modal);
   };
 

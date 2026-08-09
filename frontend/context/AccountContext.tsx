@@ -64,10 +64,14 @@ interface AccountContextType {
   payBill: (accountId: string, billerName: string, category: string, amount: number) => Promise<void>;
   rechargeMobile: (accountId: string, mobileNumber: string, operator: string, amount: number) => Promise<void>;
   createFixedDeposit: (sourceAccountId: string, amount: number, tenureMonths: number, interestRate: number) => Promise<Account>;
+  createNewAccount: (newAccountData: Partial<Account> & { initialDeposit?: number }) => Promise<Account>;
   investMutualFund: (accountId: string, fundName: string, amount: number, isSip: boolean) => Promise<void>;
   pendingApprovals: { id: string; type: "BENEFICIARY" | "LOAN" | "HIGH_VALUE_TRANSFER"; title: string; subtitle: string; timeAgo: string; amount?: number; accountId?: string }[];
   approvePendingItem: (id: string, actionType: "APPROVE_BENEFICIARY" | "APPROVE_LOAN" | "VERIFY_OTP", payload?: any) => Promise<void>;
   cancelVerification: (id: string) => void;
+  verifyAccountWithPin: (id: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  isAccountVerified: (id: string) => boolean;
+  getAccountSessionRemainingTime: (id: string) => number;
   isTotalBalanceHidden: boolean;
   toggleTotalBalanceVisibility: () => void;
 }
@@ -93,6 +97,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [verificationStates, setVerificationStates] = useState<Record<string, VerificationState>>({});
+  const [securitySessions, setSecuritySessions] = useState<Record<string, { token: string; expiresAt: number; failedAttempts: number; isLocked: boolean; lockUntil?: number }>>({});
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTotalBalanceHidden, setIsTotalBalanceHidden] = useState(false);
@@ -308,22 +313,92 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const verifyAccount = async (id: string) => {
+  const isAccountVerified = (id: string): boolean => {
+    if (!id) return false;
+    const session = securitySessions[id];
+    if (!session) return false;
+    if (session.isLocked && session.lockUntil && Date.now() < session.lockUntil) return false;
+    if (Date.now() > session.expiresAt) return false;
+    return verificationStates[id] === "VERIFIED";
+  };
+
+  const getAccountSessionRemainingTime = (id: string): number => {
+    if (!id) return 0;
+    const session = securitySessions[id];
+    if (!session || Date.now() > session.expiresAt) return 0;
+    return Math.max(0, Math.ceil((session.expiresAt - Date.now()) / 1000));
+  };
+
+  const verifyAccountWithPin = async (id: string, pin: string): Promise<{ success: boolean; error?: string }> => {
+    if (!id) return { success: false, error: "Invalid Account Selected" };
+
+    const now = Date.now();
+    const existing = securitySessions[id] || { token: "", expiresAt: 0, failedAttempts: 0, isLocked: false };
+
+    // Check if account is currently locked due to failed attempts
+    if (existing.isLocked && existing.lockUntil && now < existing.lockUntil) {
+      const remSec = Math.ceil((existing.lockUntil - now) / 1000);
+      setVerificationStates(prev => ({ ...prev, [id]: "FAILED" }));
+      return { success: false, error: `Account security locked due to multiple failed attempts. Try again in ${remSec}s.` };
+    }
+
     setVerificationStates(prev => ({ ...prev, [id]: "VERIFYING" }));
-    try {
-      const token = await MockApi.requestBalanceAccess(id);
-      const success = await MockApi.verifyBalanceAccess(id, token);
-      if (success) {
-        setVerificationStates(prev => ({ ...prev, [id]: "VERIFIED" }));
-        return true;
+    await new Promise(r => setTimeout(r, 600)); // Simulate 2FA security token auth delay
+
+    // Security PIN verification: '1234' (or valid 4-digit numeric PIN for demo testing)
+    const isValidPin = pin === "1234" || (pin.length === 4 && /^\d+$/.test(pin));
+
+    if (isValidPin) {
+      const newToken = `FE-SEC-${now}-${Math.floor(Math.random() * 10000)}`;
+      const expiresAt = now + 5 * 60 * 1000; // 5 minutes security session validity
+
+      setSecuritySessions(prev => ({
+        ...prev,
+        [id]: {
+          token: newToken,
+          expiresAt,
+          failedAttempts: 0,
+          isLocked: false
+        }
+      }));
+
+      setVerificationStates(prev => ({ ...prev, [id]: "VERIFIED" }));
+      addNotification("Security Access Granted", `Account details security session activated for account ${id}. Session valid for 5 minutes.`, "SECURITY");
+      return { success: true };
+    } else {
+      const failedAttempts = (existing.failedAttempts || 0) + 1;
+      const isLocked = failedAttempts >= 3;
+      const lockUntil = isLocked ? now + 60000 : undefined;
+
+      setSecuritySessions(prev => ({
+        ...prev,
+        [id]: {
+          token: "",
+          expiresAt: 0,
+          failedAttempts,
+          isLocked,
+          lockUntil
+        }
+      }));
+
+      setVerificationStates(prev => ({ ...prev, [id]: "FAILED" }));
+
+      if (isLocked) {
+        addNotification("Security Lockout Triggered", `Account details access locked for 60s due to 3 consecutive failed security PIN attempts.`, "SECURITY");
+        return { success: false, error: "Maximum failed attempts reached (3/3). Account details access locked for 60 seconds." };
       }
-    } catch (e) {}
-    setVerificationStates(prev => ({ ...prev, [id]: "FAILED" }));
-    return false;
+
+      return { success: false, error: `Incorrect Security PIN. ${3 - failedAttempts} attempt(s) remaining.` };
+    }
+  };
+
+  const verifyAccount = async (id: string) => {
+    return (await verifyAccountWithPin(id, "1234")).success;
   };
 
   const hideBalance = (id: string) => {
     setVerificationStates(prev => ({ ...prev, [id]: "NOT_VERIFIED" }));
+    setSecuritySessions(prev => ({ ...prev, [id]: { token: "", expiresAt: 0, failedAttempts: 0, isLocked: false } }));
   };
 
   const toggleTotalBalanceVisibility = () => {
@@ -392,6 +467,62 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       `Mobile Recharge Advice: ${mobileNumber}`,
       `Mobile recharge of ₹${amount.toLocaleString("en-IN")} for number ${mobileNumber} (${operator}) completed successfully.`
     );
+  };
+
+  const createNewAccount = async (newAccountData: Partial<Account> & { initialDeposit?: number }): Promise<Account> => {
+    const accType = newAccountData.type || "SAVINGS";
+    const last4 = Math.floor(1000 + Math.random() * 9000).toString();
+    const accNum = `4092${Math.floor(100000000 + Math.random() * 900000000)}`;
+    const depositAmt = newAccountData.initialDeposit || newAccountData.balance || 0;
+
+    const created: Account = {
+      id: `ACC-00${accounts.length + 1}`,
+      type: accType,
+      name: newAccountData.name || (accType === "SAVINGS" ? "High-Yield Savings Account" : accType === "CURRENT" ? "Business Current Account" : accType === "FIXED_DEPOSIT" ? "High Yield Fixed Deposit" : "Wealth Builder RD"),
+      maskedNumber: `•••• ${last4}`,
+      accountNumber: accNum,
+      lastFour: last4,
+      balance: depositAmt,
+      currency: "INR",
+      status: "ACTIVE",
+      accountHolder: userProfile.name,
+      ifsc: "HDFC0001234",
+      branch: userProfile.branch || "Mumbai Corporate",
+      openingDate: new Date().toISOString().split("T")[0],
+      nominee: newAccountData.nominee || "Registered Nominee",
+      nomineeRelation: newAccountData.nomineeRelation || "Spouse",
+      dailyLimit: newAccountData.dailyLimit || (accType === "CURRENT" ? 500000 : 100000),
+      transactionLimit: 50000,
+      atmLimit: 25000,
+      linkedCard: `Visa Platinum Debit Card (•••• ${last4})`
+    };
+
+    setAccounts(prev => [created, ...prev]);
+
+    // Issue initial credit transaction if funded
+    if (depositAmt > 0) {
+      const initTx: Transaction = {
+        id: `TX-INIT-${Date.now()}`,
+        accountId: created.id,
+        merchantName: "Initial Account Funding Deposit",
+        amount: depositAmt,
+        date: "Just now",
+        timestamp: new Date().toISOString(),
+        type: "CREDIT",
+        category: "Deposit",
+        status: "SUCCESS"
+      };
+      setTransactions(prev => [initTx, ...prev]);
+    }
+
+    addNotification("Account Activated", `Your new ${created.name} (${created.maskedNumber}) is active & provisioned.`, "SYSTEM");
+    addInboxMessage(
+      "FinEdge Welcome Desk",
+      `New Account Activation: ${created.name}`,
+      `Welcome to FinEdge Banking! Your new ${created.name} (${created.accountNumber}) has been provisioned successfully with initial balance of ₹${depositAmt.toLocaleString("en-IN")}. IFSC Code: ${created.ifsc}.`
+    );
+
+    return created;
   };
 
   const createFixedDeposit = async (sourceAccountId: string, amount: number, tenureMonths: number, interestRate: number) => {
@@ -474,6 +605,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       requestVerification,
       cancelVerification,
       verifyAccount,
+      verifyAccountWithPin,
+      isAccountVerified,
+      getAccountSessionRemainingTime,
       hideBalance,
       isTotalBalanceHidden,
       toggleTotalBalanceVisibility,
@@ -483,6 +617,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       payBill,
       rechargeMobile,
       createFixedDeposit,
+      createNewAccount,
       investMutualFund,
       pendingApprovals,
       approvePendingItem

@@ -9,9 +9,13 @@ import TransactionsSummaryStrip from '../../components/transactions/Transactions
 import TransactionsList from '../../components/transactions/TransactionsList';
 import TransactionsRightSidebar from '../../components/transactions/TransactionsRightSidebar';
 import { AccountProvider, useAccounts } from '../../context/AccountContext';
+import AccountStatementsModal from '../../components/modals/AccountStatementsModal';
+import { AccountStatementBuilder } from '../../lib/pdf/documents/AccountStatement';
+import { Account } from '../../types';
 
 function TransactionsContent() {
-  const { accounts } = useAccounts();
+  const { accounts, transactions, userProfile } = useAccounts();
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const [filters, setFilters] = useState<TransactionFilters>({
     searchQuery: "",
@@ -26,11 +30,38 @@ function TransactionsContent() {
     setFilters(prev => ({ ...prev, ...updated }));
   };
 
+  const handleInstantPdfDownload = () => {
+    const selectedAccount: Account = accounts.find(a => a.id === filters.accountId) || accounts[0] || {
+      id: 'ALL',
+      type: 'SAVINGS',
+      name: 'All Accounts',
+      accountNumber: 'N/A',
+      maskedNumber: 'N/A',
+      lastFour: 'N/A',
+      balance: 0,
+      currency: 'INR',
+      status: 'ACTIVE',
+      accountHolder: userProfile.name
+    };
+
+    AccountStatementBuilder.generate(
+      selectedAccount,
+      userProfile.name,
+      transactions,
+      "Complete Transaction History"
+    );
+  };
+
+  const activeAccountForModal = accounts.find(a => a.id === filters.accountId) || accounts[0] || null;
+
   return (
     <div className="flex-1 flex flex-col lg:pl-[230px] w-full min-h-screen">
       <Header />
       <main className="flex-1 mt-[72px] flex flex-col w-full max-w-[1600px] mx-auto p-6 lg:p-8 gap-6 overflow-x-hidden">
-        <TransactionsHeader />
+        <TransactionsHeader 
+          onExportStatement={() => setIsExportModalOpen(true)}
+          onDownloadPdf={handleInstantPdfDownload}
+        />
         
         <TransactionsFilterBar
           filters={filters}
@@ -49,6 +80,13 @@ function TransactionsContent() {
           />
         </div>
       </main>
+
+      <AccountStatementsModal
+        account={activeAccountForModal}
+        transactions={transactions}
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
     </div>
   );
 }

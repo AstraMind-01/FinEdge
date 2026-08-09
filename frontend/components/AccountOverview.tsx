@@ -14,6 +14,8 @@ export default function AccountOverview() {
     accounts, 
     selectedAccountId, 
     verificationStates, 
+    requestVerification,
+    isAccountVerified,
     executeTransfer, 
     updateAccountLimits, 
     toggleAccountFreeze,
@@ -28,7 +30,15 @@ export default function AccountOverview() {
 
   if (!account) return null;
 
-  const isVerified = verificationStates[account.id] === "VERIFIED";
+  const isVerified = isAccountVerified(account.id);
+
+  const handleOpenDetails = () => {
+    if (!isAccountVerified(account.id)) {
+      requestVerification(account.id);
+      return;
+    }
+    setActiveModal("details");
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
@@ -192,11 +202,17 @@ export default function AccountOverview() {
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 mt-1">
             <button 
+              onClick={handleOpenDetails}
+              className="bg-surface-high text-on-surface px-4 py-2 rounded-lg hover:bg-surface-highest transition-colors text-[13px] font-medium border border-outline-variant/30 flex items-center gap-1.5 h-[36px] cursor-pointer"
+            >
+              <Eye size={16} /> Account Details
+            </button>
+            <button 
               onClick={() => setIsFlipped(!isFlipped)}
-              className="bg-surface-high text-on-surface px-4 py-2 rounded-lg hover:bg-surface-highest transition-colors text-[13px] font-medium border border-outline-variant/30 flex items-center gap-1.5 h-[36px]"
+              className="bg-surface-high text-on-surface px-4 py-2 rounded-lg hover:bg-surface-highest transition-colors text-[13px] font-medium border border-outline-variant/30 flex items-center gap-1.5 h-[36px] cursor-pointer"
             >
               <RotateCw size={16} className={`transition-transform duration-500 ${isFlipped ? 'rotate-180 text-primary' : ''}`} />
-              {isFlipped ? 'Show Front' : 'Full Details'}
+              {isFlipped ? 'Show Front' : 'Flip Card'}
             </button>
 
             <button 
