@@ -80,11 +80,11 @@ export default function Sidebar() {
           <TrendingUp className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Investments</span>
         </Link>
-        <div className="h-px bg-outline-variant/30 my-4 mx-4"></div>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <div className="pt-4 pb-1 px-4 text-[10px] uppercase font-bold text-outline-variant/80 tracking-[0.2em]">Account Services</div>
+        <Link aria-current={pathname === "/kyc-profile" ? "page" : undefined} className={getLinkClasses("/kyc-profile")} href="/kyc-profile">
           <UserCheck className="mr-3 shrink-0" size={18} />
-          <span className="text-[13px] truncate">KYC &amp; Profile</span>
-        </a>
+          <span className="text-[13px] truncate">KYC & Profile</span>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <Users className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Beneficiaries</span>
