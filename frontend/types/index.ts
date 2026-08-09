@@ -70,3 +70,22 @@ export interface ScheduledTransfer {
   status: "ACTIVE" | "PAUSED" | "CANCELLED" | "COMPLETED" | "FAILED";
   history: ScheduledTransferHistory[];
 }
+
+export interface IntlBeneficiary {
+  id: string;
+  name: string;
+  country: string;
+  countryCode: string;
+  bankName: string;
+  swiftCode: string;
+  iban: string;
+  bankAddress: string;
+  recipientAddress: string;
+}
+
+export interface ExchangeRate {
+  currency: string;
+  countryCode: string;
+  rate: number;
+  trend: "up" | "down";
+}

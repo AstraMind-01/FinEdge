@@ -63,7 +63,7 @@ export default function Sidebar() {
             <Link href="/transfers/scheduled" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname.includes('/transfers/scheduled') ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
               <CalendarClock className="mr-2" size={14} /> Scheduled Transfers
             </Link>
-            <Link href="/transfers" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname === '/transfers/international' ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
+            <Link href="/transfers/international" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname === '/transfers/international' ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
               <Globe className="mr-2" size={14} /> International Transfer
             </Link>
           </div>

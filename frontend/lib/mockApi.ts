@@ -1,4 +1,4 @@
-import { Account, Transaction, Beneficiary, ScheduledTransfer } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate } from "../types";
 
 let accounts: Account[] = [
   {
@@ -200,5 +200,23 @@ export const MockApi = {
   verifyBalanceAccess: async (accountId: string, token: string): Promise<boolean> => {
     await delay(800);
     return token.startsWith(`TOKEN-${accountId}`);
+  },
+  getIntlBeneficiaries: async (): Promise<IntlBeneficiary[]> => {
+    await delay(300);
+    return [
+      { id: "INTL-01", name: "David Smith", country: "United States", countryCode: "US", bankName: "Chase Bank", swiftCode: "CHASUS33", iban: "US00CHAS000123456789", bankAddress: "New York, NY", recipientAddress: "123 Broadway, NY" },
+      { id: "INTL-02", name: "Sarah Jones", country: "United Kingdom", countryCode: "GB", bankName: "Barclays", swiftCode: "BARCGB22", iban: "GB00BARC200000123456", bankAddress: "London, UK", recipientAddress: "45 Oxford St, London" },
+      { id: "INTL-03", name: "Michael Wong", country: "Singapore", countryCode: "SG", bankName: "DBS Bank", swiftCode: "DBSSSG", iban: "SG00DBS0000001234567", bankAddress: "Marina Bay, SG", recipientAddress: "10 Bayfront Ave, SG" }
+    ];
+  },
+  getExchangeRates: async (): Promise<ExchangeRate[]> => {
+    await delay(100);
+    return [
+      { currency: "USD", countryCode: "US", rate: 83.42, trend: "up" },
+      { currency: "EUR", countryCode: "EU", rate: 90.15, trend: "up" },
+      { currency: "GBP", countryCode: "GB", rate: 105.60, trend: "down" },
+      { currency: "AED", countryCode: "AE", rate: 22.71, trend: "up" },
+      { currency: "SGD", countryCode: "SG", rate: 61.85, trend: "down" }
+    ];
   }
 };
