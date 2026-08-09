@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { Plus, Search, Filter, Calendar, Folder, Clock, CheckCircle, CurrencyIcon, AlertTriangle, ArrowRight, Gavel, Phone, HelpCircle, ChevronRight, Sync, XCircle, Info, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Folder, Clock, CheckCircle, CurrencyIcon, AlertTriangle, ArrowRight, Gavel, Phone, HelpCircle, ChevronRight, RefreshCw, XCircle, Info, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 const disputes = [
