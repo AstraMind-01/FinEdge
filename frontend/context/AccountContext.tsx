@@ -13,6 +13,15 @@ export interface AppNotification {
   type: "DEBIT" | "CREDIT" | "LOAN" | "SECURITY" | "CARD" | "SYSTEM";
 }
 
+export interface AppInboxMessage {
+  id: string;
+  sender: string;
+  subject: string;
+  timeAgo: string;
+  read: boolean;
+  content: string;
+}
+
 interface AccountContextType {
   userProfile: UserProfile;
   updateUserProfile: (updated: Partial<UserProfile>) => void;
@@ -22,10 +31,23 @@ interface AccountContextType {
   selectedAccountId: string | null;
   transactions: Transaction[];
   isLoading: boolean;
+  
+  // Notification Stream
   notifications: AppNotification[];
   notificationsCount: number;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  addNotification: (title: string, subtitle: string, type?: AppNotification["type"]) => void;
+
+  // Secure Bank Inbox Stream
+  inboxMessages: AppInboxMessage[];
+  inboxCount: number;
+  markInboxRead: (id: string) => void;
+  markAllInboxRead: () => void;
+  deleteInboxMessage: (id: string) => void;
+  addInboxMessage: (sender: string, subject: string, content: string) => void;
+
   refreshAllData: () => Promise<void>;
-  
   selectAccount: (id: string) => void;
   requestVerification: (id: string) => void;
   verifyAccount: (id: string) => Promise<boolean>;
@@ -42,7 +64,6 @@ interface AccountContextType {
   cancelVerification: (id: string) => void;
   isTotalBalanceHidden: boolean;
   toggleTotalBalanceVisibility: () => void;
-  addNotification: (title: string, subtitle: string, type?: AppNotification["type"]) => void;
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
@@ -60,23 +81,46 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     memberSince: "Oct 2021"
   });
 
-  const updateUserProfile = (updated: Partial<UserProfile>) => {
-    setUserProfile(prev => ({ ...prev, ...updated }));
-    addNotification("Profile Updated", `Your personal profile details were updated successfully.`, "SECURITY");
-  };
-
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [verificationStates, setVerificationStates] = useState<Record<string, VerificationState>>({});
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTotalBalanceHidden, setIsTotalBalanceHidden] = useState(false);
-  
-  const [notifications, setNotifications] = useState<AppNotification[]>([
-    { id: "NOT-001", title: "Fund Transfer Successful", subtitle: "₹15,000 transferred to Priya Sharma via IMPS", timeAgo: "10m ago", unread: true, type: "DEBIT" },
-    { id: "NOT-002", title: "High Value Alert", subtitle: "RTGS transfer request of ₹2,50,000 queued for review", timeAgo: "1h ago", unread: true, type: "SYSTEM" },
-    { id: "NOT-003", title: "Interest Credited", subtitle: "₹12,450.00 annual interest credited to Primary Savings", timeAgo: "1d ago", unread: false, type: "CREDIT" }
-  ]);
+
+  // Dynamic Notification Stream (Empty by default)
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // Dynamic Bank Inbox Stream (Empty by default)
+  const [inboxMessages, setInboxMessages] = useState<AppInboxMessage[]>([]);
+
+  // Load persisted notifications and inbox on mount
+  useEffect(() => {
+    try {
+      const savedNotifs = localStorage.getItem("finedge_user_notifications");
+      if (savedNotifs) {
+        setNotifications(JSON.parse(savedNotifs));
+      }
+      const savedInbox = localStorage.getItem("finedge_user_inbox");
+      if (savedInbox) {
+        setInboxMessages(JSON.parse(savedInbox));
+      }
+    } catch (e) {}
+  }, []);
+
+  const saveNotificationsState = (newNotifs: AppNotification[]) => {
+    setNotifications(newNotifs);
+    try {
+      localStorage.setItem("finedge_user_notifications", JSON.stringify(newNotifs));
+    } catch (e) {}
+  };
+
+  const saveInboxState = (newInbox: AppInboxMessage[]) => {
+    setInboxMessages(newInbox);
+    try {
+      localStorage.setItem("finedge_user_inbox", JSON.stringify(newInbox));
+    } catch (e) {}
+  };
 
   const addNotification = (title: string, subtitle: string, type: AppNotification["type"] = "SYSTEM") => {
     const newNotif: AppNotification = {
@@ -87,7 +131,54 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       unread: true,
       type
     };
-    setNotifications(prev => [newNotif, ...prev]);
+    saveNotificationsState([newNotif, ...notifications]);
+  };
+
+  const addInboxMessage = (sender: string, subject: string, content: string) => {
+    const newMsg: AppInboxMessage = {
+      id: `MSG-${Date.now()}`,
+      sender,
+      subject,
+      timeAgo: "Just now",
+      read: false,
+      content
+    };
+    saveInboxState([newMsg, ...inboxMessages]);
+  };
+
+  const markNotificationRead = (id: string) => {
+    const updated = notifications.map(n => n.id === id ? { ...n, unread: false } : n);
+    saveNotificationsState(updated);
+  };
+
+  const markAllNotificationsRead = () => {
+    const updated = notifications.map(n => ({ ...n, unread: false }));
+    saveNotificationsState(updated);
+  };
+
+  const markInboxRead = (id: string) => {
+    const updated = inboxMessages.map(m => m.id === id ? { ...m, read: true } : m);
+    saveInboxState(updated);
+  };
+
+  const markAllInboxRead = () => {
+    const updated = inboxMessages.map(m => ({ ...m, read: true }));
+    saveInboxState(updated);
+  };
+
+  const deleteInboxMessage = (id: string) => {
+    const updated = inboxMessages.filter(m => m.id !== id);
+    saveInboxState(updated);
+  };
+
+  const updateUserProfile = (updated: Partial<UserProfile>) => {
+    setUserProfile(prev => ({ ...prev, ...updated }));
+    addNotification("Profile Updated", `Your personal profile details were updated successfully.`, "SECURITY");
+    addInboxMessage(
+      "FinEdge Security",
+      "Account Profile Update Confirmation",
+      "Your personal account profile details (Name, Contact, or Address) were updated successfully. If you did not authorize this change, please contact fraud support immediately."
+    );
   };
 
   const [pendingApprovals, setPendingApprovals] = useState([
@@ -182,6 +273,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     await refreshAllData();
     if (amount > 0) {
       addNotification("Transfer Executed", `₹${amount.toLocaleString("en-IN")} debited from account.`, "DEBIT");
+      addInboxMessage(
+        "Bank Transfers",
+        `Fund Transfer Advice: ₹${amount.toLocaleString("en-IN")}`,
+        `Your direct transfer of ₹${amount.toLocaleString("en-IN")} has been debited from your account and processed successfully.`
+      );
     }
   };
 
@@ -189,6 +285,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     await MockApi.updateLimits(accountId, daily, transaction, atm);
     await refreshAllData();
     addNotification("Limits Updated", `Daily transfer limits updated for account ${accountId}.`, "SECURITY");
+    addInboxMessage(
+      "Security Alerts",
+      `Account Limits Modified: ${accountId}`,
+      `The daily transaction limit for account ${accountId} was modified to ₹${daily.toLocaleString("en-IN")}.`
+    );
   };
 
   const toggleAccountFreeze = async (accountId: string) => {
@@ -200,24 +301,46 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       `Account ${accountId} ${isFrozen ? 'has been frozen for security' : 'is now active'}.`,
       "SECURITY"
     );
+    addInboxMessage(
+      "Security Alerts",
+      isFrozen ? `Account Frozen Notice: ${accountId}` : `Account Reactivated: ${accountId}`,
+      isFrozen
+        ? `Account ${accountId} was frozen to prevent unauthorized activity. Contact support if you need assistance.`
+        : `Account ${accountId} has been unfrozen and is fully active for online transfers and transactions.`
+    );
   };
 
   const payBill = async (accountId: string, billerName: string, category: string, amount: number) => {
     await MockApi.payBill(accountId, billerName, category, amount);
     await refreshAllData();
     addNotification("Bill Payment Successful", `₹${amount.toLocaleString("en-IN")} paid to ${billerName}.`, "DEBIT");
+    addInboxMessage(
+      "Utility Bill Payments",
+      `Bill Payment Receipt: ${billerName}`,
+      `Your utility payment of ₹${amount.toLocaleString("en-IN")} to ${billerName} (${category}) was processed successfully.`
+    );
   };
 
   const rechargeMobile = async (accountId: string, mobileNumber: string, operator: string, amount: number) => {
     await MockApi.rechargeMobile(accountId, mobileNumber, operator, amount);
     await refreshAllData();
     addNotification("Mobile Recharge Successful", `₹${amount.toLocaleString("en-IN")} recharge done for ${mobileNumber}.`, "DEBIT");
+    addInboxMessage(
+      "Prepaid Recharges",
+      `Mobile Recharge Advice: ${mobileNumber}`,
+      `Mobile recharge of ₹${amount.toLocaleString("en-IN")} for number ${mobileNumber} (${operator}) completed successfully.`
+    );
   };
 
   const createFixedDeposit = async (sourceAccountId: string, amount: number, tenureMonths: number, interestRate: number) => {
     const newFd = await MockApi.createFixedDeposit(sourceAccountId, amount, tenureMonths, interestRate);
     await refreshAllData();
     addNotification("Fixed Deposit Created", `New FD created for ₹${amount.toLocaleString("en-IN")} at ${interestRate}% p.a.`, "CREDIT");
+    addInboxMessage(
+      "Deposits Desk",
+      `Fixed Deposit Advice: FD-${newFd.id || "NEW"}`,
+      `Your Fixed Deposit of ₹${amount.toLocaleString("en-IN")} for ${tenureMonths} months at ${interestRate}% p.a. interest has been booked successfully.`
+    );
     return newFd;
   };
 
@@ -225,29 +348,43 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     await MockApi.investMutualFund(accountId, fundName, amount, isSip);
     await refreshAllData();
     addNotification("Investment Executed", `${isSip ? 'SIP' : 'Lump-sum'} investment of ₹${amount.toLocaleString("en-IN")} in ${fundName}.`, "DEBIT");
+    addInboxMessage(
+      "Wealth Management",
+      `Investment Confirmation: ${fundName}`,
+      `Your ${isSip ? 'Monthly SIP' : 'Lump-sum'} order of ₹${amount.toLocaleString("en-IN")} in ${fundName} was submitted to NAV allocation.`
+    );
   };
 
   const approvePendingItem = async (id: string, actionType: "APPROVE_BENEFICIARY" | "APPROVE_LOAN" | "VERIFY_OTP", payload?: any) => {
     const targetAccId = selectedAccountId || accounts[0]?.id;
     if (actionType === "APPROVE_LOAN" && targetAccId && payload?.amount) {
-      // Sanction loan -> credit to account
-      await MockApi.transferFunds(targetAccId, targetAccId, 0); // trigger update
+      await MockApi.transferFunds(targetAccId, targetAccId, 0);
       const targetAcc = accounts.find(a => a.id === targetAccId);
       if (targetAcc) targetAcc.balance += payload.amount;
       addNotification("Loan Sanctioned", `₹${payload.amount.toLocaleString("en-IN")} credited to your account.`, "CREDIT");
+      addInboxMessage(
+        "Loan Sanctions",
+        `Loan Disbursal Advice: ₹${payload.amount.toLocaleString("en-IN")}`,
+        `Congratulations! Your personal loan application of ₹${payload.amount.toLocaleString("en-IN")} has been approved and credited to your account.`
+      );
     } else if (actionType === "VERIFY_OTP" && targetAccId && payload?.amount) {
-      // Execute RTGS transfer -> debit account
       const targetAcc = accounts.find(a => a.id === targetAccId);
       if (targetAcc && targetAcc.balance >= payload.amount) {
         targetAcc.balance -= payload.amount;
       }
       addNotification("High Value Transfer Executed", `₹${payload.amount.toLocaleString("en-IN")} debited for RTGS transfer.`, "DEBIT");
+      addInboxMessage(
+        "RTGS Operations",
+        `High-Value RTGS Transfer Executed: ₹${payload.amount.toLocaleString("en-IN")}`,
+        `Your high-value RTGS transfer of ₹${payload.amount.toLocaleString("en-IN")} passed 2FA authorization and was settled.`
+      );
     }
     setPendingApprovals(prev => prev.filter(item => item.id !== id));
     await refreshAllData();
   };
 
-  const unreadNotificationsCount = notifications.filter(n => n.unread).length;
+  const notificationsCount = notifications.filter(n => n.unread).length;
+  const inboxCount = inboxMessages.filter(m => !m.read).length;
 
   return (
     <AccountContext.Provider value={{
@@ -260,7 +397,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       transactions,
       isLoading,
       notifications,
-      notificationsCount: unreadNotificationsCount,
+      notificationsCount,
+      markNotificationRead,
+      markAllNotificationsRead,
+      addNotification,
+      inboxMessages,
+      inboxCount,
+      markInboxRead,
+      markAllInboxRead,
+      deleteInboxMessage,
+      addInboxMessage,
       refreshAllData,
       selectAccount,
       requestVerification,
@@ -277,8 +423,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       createFixedDeposit,
       investMutualFund,
       pendingApprovals,
-      approvePendingItem,
-      addNotification
+      approvePendingItem
     }}>
       {children}
     </AccountContext.Provider>

@@ -1,86 +1,73 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Search, Mail, Bell, Maximize, Minimize } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, Mail, Maximize, Minimize, ChevronDown } from 'lucide-react';
 import { useAccounts } from '../context/AccountContext';
-import HeaderInboxDropdown from './header/HeaderInboxDropdown';
 import HeaderNotificationsDropdown from './header/HeaderNotificationsDropdown';
+import HeaderInboxDropdown from './header/HeaderInboxDropdown';
 import UserProfileDropdown from './header/UserProfileDropdown';
 import GlobalSearchDropdown from './header/GlobalSearchDropdown';
 
 export default function Header() {
-  const { userProfile, accounts, transactions, selectAccount, notificationsCount } = useAccounts();
+  const { userProfile, accounts, transactions, selectAccount, notificationsCount, inboxCount } = useAccounts();
   const [activeDropdown, setActiveDropdown] = useState<"inbox" | "notifications" | "profile" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+  const toggleDropdown = (type: "inbox" | "notifications" | "profile") => {
+    setActiveDropdown(prev => prev === type ? null : type);
+  };
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
       }
     }
   };
 
-  const toggleDropdown = (name: "inbox" | "notifications" | "profile") => {
-    setActiveDropdown(prev => prev === name ? null : name);
-    setIsSearchOpen(false);
-  };
-
   return (
-    <header className="fixed top-0 left-0 lg:left-[230px] right-0 h-[72px] bg-background/95 backdrop-blur-xl z-40 px-6 lg:px-8 flex items-center justify-between border-b border-outline-variant/10 shadow-[0_1px_8px_rgba(0,0,0,0.1)]">
-      {/* Left Greeting & Search */}
-      <div className="flex items-center gap-6">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="font-headline-lg text-[18px] lg:text-[20px] font-semibold text-on-surface leading-tight">Welcome back, {userProfile.name}</span>
-            <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">Premium</span>
-          </div>
-          <span className="text-[12px] text-on-surface-variant mt-0.5">Managing your wealth securely.</span>
-        </div>
-
-        {/* Global Search Bar */}
-        <div className="relative ml-8 hidden lg:block">
-          <div className="flex items-center bg-surface-container rounded-full px-4 py-2 gap-2 border border-outline-variant/20 w-[240px] xl:w-[300px]">
-            <Search className="text-on-surface-variant shrink-0" size={18} />
-            <input 
-              className="bg-transparent border-none outline-none text-body-md text-[13px] text-on-surface placeholder:text-on-surface-variant w-full" 
-              placeholder="Search transactions..." 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-            />
-          </div>
-
-          <GlobalSearchDropdown
-            query={searchQuery}
-            accounts={accounts}
-            transactions={transactions}
-            isOpen={isSearchOpen && searchQuery.trim().length > 0}
-            onClose={() => setIsSearchOpen(false)}
-            onSelectAccount={selectAccount}
+    <header className="h-[72px] bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/10 flex items-center justify-between px-6 fixed top-0 right-0 left-0 lg:left-[230px] z-30 transition-all duration-300">
+      
+      {/* Left: Global Search Input */}
+      <div className="relative flex-1 max-w-md">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search transactions, accounts, payees, services..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setIsSearchOpen(e.target.value.trim().length > 0);
+            }}
+            onFocus={() => {
+              if (searchQuery.trim().length > 0) setIsSearchOpen(true);
+            }}
+            className="w-full bg-surface-high/60 border border-outline-variant/20 rounded-xl py-2 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
           />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
         </div>
+
+        {/* Search Results Dropdown */}
+        <GlobalSearchDropdown 
+          isOpen={isSearchOpen}
+          query={searchQuery}
+          accounts={accounts}
+          transactions={transactions}
+          onSelectAccount={selectAccount}
+          onClose={() => setIsSearchOpen(false)}
+        />
       </div>
 
       {/* Right Controls */}
       <div className="flex items-center gap-6">
         <div className="hidden sm:flex items-center gap-5 text-on-surface-variant">
+          
           {/* Mail Inbox Button */}
           <div className="relative">
             <button 
@@ -89,9 +76,11 @@ export default function Header() {
               title="Secure Inbox"
             >
               <Mail size={20} />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-on-primary text-[9px] font-bold rounded-full flex items-center justify-center">
-                2
-              </span>
+              {inboxCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-on-primary text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {inboxCount}
+                </span>
+              )}
             </button>
 
             <HeaderInboxDropdown 
@@ -131,31 +120,36 @@ export default function Header() {
           </button>
         </div>
 
-        <div className="hidden sm:block h-8 w-[1px] bg-outline-variant/30"></div>
+        <div className="h-6 w-px bg-outline-variant/20 hidden sm:block"></div>
 
-        {/* User Profile Area */}
+        {/* User Profile Avatar Dropdown */}
         <div className="relative">
-          <div 
+          <button 
             onClick={() => toggleDropdown("profile")}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 p-1 rounded-xl hover:bg-surface-high/50 transition-colors"
           >
-            <div className="text-right hidden sm:block">
-              <p className="text-[13px] font-bold text-on-surface leading-tight truncate max-w-[120px] group-hover:text-primary transition-colors">{userProfile.name}</p>
-              <p className="text-[11px] text-primary leading-tight mt-0.5">Premium Member</p>
+            <div className="w-9 h-9 rounded-full bg-surface-high border border-outline-variant/30 flex items-center justify-center font-bold text-sm text-primary overflow-hidden shrink-0">
+              {userProfile.avatarUrl ? (
+                <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-full h-full object-cover" />
+              ) : (
+                userProfile.name.charAt(0)
+              )}
             </div>
-            <img 
-              alt="Profile" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary shrink-0 transition-colors shadow-sm" 
-              src={userProfile.avatarUrl}
-            />
-          </div>
+            <div className="hidden md:flex flex-col text-left">
+              <span className="text-xs font-bold text-on-surface">{userProfile.name}</span>
+              <span className="text-[10px] text-on-surface-variant font-mono">ID: {userProfile.customerID}</span>
+            </div>
+            <ChevronDown size={14} className="text-on-surface-variant" />
+          </button>
 
           <UserProfileDropdown 
             isOpen={activeDropdown === "profile"} 
             onClose={() => setActiveDropdown(null)} 
           />
         </div>
+
       </div>
+
     </header>
   );
 }

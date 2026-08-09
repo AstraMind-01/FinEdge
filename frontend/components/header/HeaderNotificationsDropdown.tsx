@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, ArrowRightLeft, ShieldAlert, Sparkles, Check, CreditCard, Lock } from "lucide-react";
+import { Bell, ArrowRightLeft, ShieldAlert, Sparkles, Check, CreditCard } from "lucide-react";
 import { useAccounts } from "../../context/AccountContext";
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function HeaderNotificationsDropdown({ isOpen, onClose }: Props) {
-  const { notifications, notificationsCount } = useAccounts();
+  const { notifications, notificationsCount, markNotificationRead, markAllNotificationsRead } = useAccounts();
 
   if (!isOpen) return null;
 
@@ -34,19 +34,32 @@ export default function HeaderNotificationsDropdown({ isOpen, onClose }: Props) 
             </span>
           )}
         </div>
+        {notificationsCount > 0 && (
+          <button 
+            onClick={markAllNotificationsRead}
+            className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
+          >
+            <Check size={14} /> Clear all
+          </button>
+        )}
       </div>
 
       {/* List */}
       <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-1 divide-y divide-outline-variant/10">
         {notifications.length === 0 ? (
-          <div className="p-6 text-center text-xs text-on-surface-variant">
-            No notifications available.
+          <div className="p-8 text-center flex flex-col items-center gap-2">
+            <Bell size={32} className="text-on-surface-variant opacity-30" />
+            <span className="text-xs font-bold text-on-surface">No Notifications Yet</span>
+            <p className="text-[11px] text-on-surface-variant max-w-xs m-0">
+              System alerts for transfers, payments, card controls, and security changes will appear here in real-time.
+            </p>
           </div>
         ) : (
           notifications.map(n => (
             <div 
               key={n.id}
-              className={`pt-2.5 pb-2.5 px-2 rounded-lg transition-colors flex items-start gap-3 ${n.unread ? 'bg-primary/5' : 'hover:bg-surface-high/40'}`}
+              onClick={() => markNotificationRead(n.id)}
+              className={`pt-2.5 pb-2.5 px-2 rounded-lg cursor-pointer transition-colors flex items-start gap-3 ${n.unread ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-surface-high/40'}`}
             >
               <div className="p-2 bg-surface-high rounded-lg shrink-0 mt-0.5">
                 {getIcon(n.type)}
