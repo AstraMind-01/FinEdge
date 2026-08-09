@@ -93,10 +93,10 @@ export default function Sidebar() {
           <Users className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Beneficiaries</span>
         </Link>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <Link aria-current={pathname === "/disputes" ? "page" : undefined} className={getLinkClasses("/disputes")} href="/disputes">
           <ShieldAlert className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Disputes</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <Bell className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Notifications</span>
