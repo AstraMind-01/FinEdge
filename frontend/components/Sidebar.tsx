@@ -68,10 +68,10 @@ export default function Sidebar() {
             </Link>
           </div>
         </div>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <Link aria-current={pathname === "/cards" ? "page" : undefined} className={getLinkClasses("/cards")} href="/cards">
           <CreditCard className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Cards</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <Landmark className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Loans</span>

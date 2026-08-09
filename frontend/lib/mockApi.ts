@@ -1,4 +1,4 @@
-import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer } from "../types";
 
 let accounts: Account[] = [
   {
@@ -217,6 +217,118 @@ export const MockApi = {
       { currency: "GBP", countryCode: "GB", rate: 105.60, trend: "down" },
       { currency: "AED", countryCode: "AE", rate: 22.71, trend: "up" },
       { currency: "SGD", countryCode: "SG", rate: 61.85, trend: "down" }
+    ];
+  },
+  getCards: async (): Promise<BankCard[]> => {
+    await delay(300);
+    return [
+      {
+        id: "CARD-001",
+        type: "CREDIT",
+        tier: "REWARDS",
+        network: "VISA",
+        name: "FinEdge Infinite Credit",
+        cardholderName: "Soumya Ranjan",
+        maskedNumber: "•••• •••• •••• 4599",
+        fullNumber: "4111 2222 3333 4599",
+        expiry: "12/28",
+        cvv: "891",
+        status: "ACTIVE",
+        linkedAccountId: "ACC-001",
+        isDefault: true,
+        theme: "purple-gold",
+        controls: {
+          onlineTransactions: true,
+          internationalUsage: false,
+          contactlessPayments: true,
+          atmWithdrawals: true,
+          posTransactions: true,
+          dailyAtmLimit: 50000,
+          dailyPosLimit: 150000,
+          onlineLimit: 100000
+        },
+        spentThisMonth: 45200,
+        creditLimit: 250000,
+        rewardsPoints: 12450
+      },
+      {
+        id: "CARD-002",
+        type: "DEBIT",
+        tier: "PLATINUM",
+        network: "MASTERCARD",
+        name: "FinEdge Platinum Debit",
+        cardholderName: "Soumya Ranjan",
+        maskedNumber: "•••• •••• •••• 8821",
+        fullNumber: "5123 4567 8901 8821",
+        expiry: "08/27",
+        cvv: "442",
+        status: "ACTIVE",
+        linkedAccountId: "ACC-002",
+        isDefault: false,
+        theme: "navy-gold",
+        controls: {
+          onlineTransactions: true,
+          internationalUsage: true,
+          contactlessPayments: true,
+          atmWithdrawals: true,
+          posTransactions: true,
+          dailyAtmLimit: 100000,
+          dailyPosLimit: 200000,
+          onlineLimit: 200000
+        }
+      },
+      {
+        id: "CARD-003",
+        type: "VIRTUAL",
+        tier: "CLASSIC",
+        network: "VISA",
+        name: "FinEdge Secure Virtual",
+        cardholderName: "Soumya Ranjan",
+        maskedNumber: "•••• •••• •••• 1102",
+        fullNumber: "4555 1234 5678 1102",
+        expiry: "01/26",
+        cvv: "119",
+        status: "FROZEN",
+        linkedAccountId: "ACC-001",
+        isDefault: false,
+        theme: "teal-silver",
+        controls: {
+          onlineTransactions: true,
+          internationalUsage: false,
+          contactlessPayments: false,
+          atmWithdrawals: false,
+          posTransactions: false,
+          dailyAtmLimit: 0,
+          dailyPosLimit: 0,
+          onlineLimit: 50000
+        }
+      }
+    ];
+  },
+  getCardOffers: async (): Promise<CardOffer[]> => {
+    await delay(200);
+    return [
+      {
+        id: "OFFER-01",
+        merchantName: "Amazon",
+        merchantLogo: "shopping-bag",
+        discountDesc: "10% Cashback on Electronics",
+        validTill: "31 Aug 2026"
+      },
+      {
+        id: "OFFER-02",
+        merchantName: "MakeMyTrip",
+        merchantLogo: "plane",
+        discountDesc: "Flat ₹2500 off on Flights",
+        validTill: "15 Sep 2026"
+      },
+      {
+        id: "OFFER-03",
+        merchantName: "Zomato",
+        merchantLogo: "coffee",
+        discountDesc: "20% off on weekend dining",
+        validTill: "30 Sep 2026"
+      }
     ];
   }
 };

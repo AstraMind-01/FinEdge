@@ -89,3 +89,45 @@ export interface ExchangeRate {
   rate: number;
   trend: "up" | "down";
 }
+
+export interface CardControls {
+  onlineTransactions: boolean;
+  internationalUsage: boolean;
+  contactlessPayments: boolean;
+  atmWithdrawals: boolean;
+  posTransactions: boolean;
+  dailyAtmLimit: number;
+  dailyPosLimit: number;
+  onlineLimit: number;
+}
+
+export interface BankCard {
+  id: string;
+  type: "DEBIT" | "CREDIT" | "VIRTUAL";
+  tier: "PLATINUM" | "GOLD" | "CLASSIC" | "REWARDS";
+  network: "VISA" | "MASTERCARD";
+  name: string;
+  cardholderName: string;
+  maskedNumber: string;
+  fullNumber: string; // usually hidden
+  expiry: string;
+  cvv: string; // usually hidden
+  status: "ACTIVE" | "FROZEN" | "BLOCKED";
+  linkedAccountId: string;
+  isDefault: boolean;
+  theme: "navy-gold" | "purple-gold" | "teal-silver";
+  controls: CardControls;
+  // For Credit Cards
+  spentThisMonth?: number;
+  creditLimit?: number;
+  rewardsPoints?: number;
+}
+
+export interface CardOffer {
+  id: string;
+  merchantName: string;
+  merchantLogo: string;
+  discountDesc: string;
+  validTill: string;
+}
+
