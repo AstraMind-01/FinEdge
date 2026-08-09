@@ -3,6 +3,7 @@ package com.onlinebanking.account.controller;
 import com.onlinebanking.account.dto.AccountResponse;
 import com.onlinebanking.account.dto.BalanceResponse;
 import com.onlinebanking.account.dto.CreateAccountRequest;
+import com.onlinebanking.account.dto.LimitsResponse;
 import com.onlinebanking.account.dto.UpdateAccountStatusRequest;
 import com.onlinebanking.account.service.AccountService;
 import jakarta.validation.Valid;
@@ -70,6 +71,33 @@ public class AccountController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateAccountStatusRequest request) {
         AccountResponse response = accountService.updateAccountStatus(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/freeze")
+    public ResponseEntity<AccountResponse> freezeAccount(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication.getName();
+        AccountResponse response = accountService.freezeAccount(id, username);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/unfreeze")
+    public ResponseEntity<AccountResponse> unfreezeAccount(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication.getName();
+        AccountResponse response = accountService.unfreezeAccount(id, username);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/limits")
+    public ResponseEntity<LimitsResponse> getAccountLimits(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication.getName();
+        LimitsResponse response = accountService.getAccountLimits(id, username);
         return ResponseEntity.ok(response);
     }
 

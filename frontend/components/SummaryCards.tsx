@@ -1,26 +1,40 @@
 "use client";
+
 import React from 'react';
-import { Wallet, Landmark, Briefcase, Lock, TrendingUp, CheckCircle, EyeOff, Eye } from 'lucide-react';
+import { Wallet, Landmark, Briefcase, Lock, TrendingUp, EyeOff, Eye, PiggyBank } from 'lucide-react';
 import { useAccounts } from '../context/AccountContext';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 
 export default function SummaryCards() {
-  const { accounts, totalBalance, isLoading, verificationStates, requestVerification, hideBalance, selectAccount } = useAccounts();
+  const { 
+    accounts, 
+    totalBalance, 
+    isLoading, 
+    verificationStates, 
+    requestVerification, 
+    hideBalance, 
+    selectedAccountId, 
+    selectAccount,
+    isTotalBalanceHidden,
+    toggleTotalBalanceVisibility
+  } = useAccounts();
 
   const getIcon = (type: string) => {
     if (type === 'SAVINGS') return <Landmark className="text-tertiary bg-tertiary/10 p-2 rounded-lg shrink-0 w-[36px] h-[36px]" />;
     if (type === 'CURRENT') return <Briefcase className="text-secondary bg-secondary/10 p-2 rounded-lg shrink-0 w-[36px] h-[36px]" />;
     if (type === 'FIXED_DEPOSIT') return <Lock className="text-primary-fixed bg-primary-fixed/10 p-2 rounded-lg shrink-0 w-[36px] h-[36px]" />;
+    if (type === 'RECURRING_DEPOSIT') return <PiggyBank className="text-tertiary-fixed bg-tertiary-fixed/10 p-2 rounded-lg shrink-0 w-[36px] h-[36px]" />;
     return <Wallet />;
   };
 
-  const getThemeClass = (type: string) => {
-    if (type === 'SAVINGS') return 'group-hover:bg-tertiary/20 border-white/5 hover:border-tertiary/30';
-    if (type === 'CURRENT') return 'group-hover:bg-secondary/20 border-white/5 hover:border-secondary/30';
-    if (type === 'FIXED_DEPOSIT') return 'group-hover:bg-primary-fixed/20 border-white/5 hover:border-primary-fixed/30';
-    return 'group-hover:bg-primary/20 border-white/5 hover:border-primary/30';
+  const getThemeClass = (type: string, isSelected: boolean) => {
+    const base = isSelected ? 'border-primary shadow-[0_0_15px_rgba(240,180,41,0.15)] bg-surface-container-high' : 'border-white/5 hover:border-white/20';
+    if (type === 'SAVINGS') return `${base} group-hover:bg-tertiary/10`;
+    if (type === 'CURRENT') return `${base} group-hover:bg-secondary/10`;
+    if (type === 'FIXED_DEPOSIT') return `${base} group-hover:bg-primary-fixed/10`;
+    return `${base} group-hover:bg-primary/10`;
   };
 
   const formatCurrency = (amount: number) => {
@@ -29,16 +43,26 @@ export default function SummaryCards() {
 
   return (
     <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+      {/* 1. Total Balance Card */}
       <Card className="p-5 flex flex-col justify-between relative overflow-hidden group min-h-[120px]">
         <div className="absolute -right-8 -top-8 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all duration-500"></div>
         <div className="flex items-start justify-between relative z-10">
           <div className="flex flex-col gap-1.5">
-            <span className="text-[12px] text-on-surface-variant uppercase tracking-wider font-medium truncate">Total Balance</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-on-surface-variant uppercase tracking-wider font-medium truncate">Total Balance</span>
+              <button 
+                onClick={toggleTotalBalanceVisibility}
+                className="text-on-surface-variant hover:text-primary transition-colors p-0.5"
+                title={isTotalBalanceHidden ? "Show Total Balance" : "Hide Total Balance"}
+              >
+                {isTotalBalanceHidden ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+            </div>
             {isLoading ? (
               <Skeleton className="h-8 w-32 mt-1" />
             ) : (
               <span className="font-display-lg text-[20px] xl:text-[24px] text-on-surface font-bold tracking-tight truncate">
-                {formatCurrency(totalBalance)}
+                {isTotalBalanceHidden ? "••••••••••••" : formatCurrency(totalBalance)}
               </span>
             )}
           </div>
@@ -51,6 +75,7 @@ export default function SummaryCards() {
         </div>
       </Card>
 
+      {/* Account Cards */}
       {isLoading && accounts.length === 0 ? (
         <>
           <Skeleton className="h-[120px] rounded-xl" />
@@ -61,9 +86,14 @@ export default function SummaryCards() {
         accounts.map((account) => {
           const vState = verificationStates[account.id] || "NOT_VERIFIED";
           const isVerified = vState === "VERIFIED";
+          const isSelected = selectedAccountId === account.id;
 
           return (
-            <Card key={account.id} className={`p-5 flex flex-col justify-between relative overflow-hidden group min-h-[120px] cursor-pointer transition-colors ${getThemeClass(account.type)}`} onClick={() => selectAccount(account.id)}>
+            <Card 
+              key={account.id} 
+              className={`p-5 flex flex-col justify-between relative overflow-hidden group min-h-[120px] cursor-pointer transition-all ${getThemeClass(account.type, isSelected)}`} 
+              onClick={() => selectAccount(account.id)}
+            >
               <div className="absolute -right-8 -top-8 w-24 h-24 bg-white/5 rounded-full blur-2xl transition-all duration-500"></div>
               <div className="flex items-start justify-between relative z-10">
                 <div className="flex flex-col gap-1.5 w-full">

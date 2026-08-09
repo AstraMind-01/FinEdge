@@ -13,7 +13,7 @@ import { AccountProvider, useAccounts } from '../context/AccountContext';
 import AccountVerificationDialog from '../components/AccountVerificationDialog';
 
 function DashboardContent() {
-  const { verificationStates, requestVerification } = useAccounts();
+  const { verificationStates, cancelVerification } = useAccounts();
   const accountIdToVerify = Object.keys(verificationStates).find(id => verificationStates[id] === "VERIFICATION_REQUIRED");
 
   return (
@@ -34,7 +34,7 @@ function DashboardContent() {
       </main>
       <AccountVerificationDialog 
         accountId={accountIdToVerify || null} 
-        onClose={() => requestVerification("") /* will just reset if handled in a better way, but we can do a local clear if needed. Let's fix this in context */} 
+        onClose={() => accountIdToVerify && cancelVerification(accountIdToVerify)} 
       />
     </div>
   );
@@ -42,11 +42,9 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <AccountProvider>
-      <div className="bg-background font-body-md text-on-surface min-h-screen flex">
-        <Sidebar />
-        <DashboardContent />
-      </div>
-    </AccountProvider>
+    <div className="bg-background font-body-md text-on-surface min-h-screen flex">
+      <Sidebar />
+      <DashboardContent />
+    </div>
   );
 }

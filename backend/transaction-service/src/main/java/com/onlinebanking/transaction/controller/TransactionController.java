@@ -67,6 +67,14 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getUserTransactionHistory(username));
     }
 
+    @GetMapping("/transactions/account/{accountNumber}")
+    public ResponseEntity<List<TransactionResponse>> getAccountTransactions(
+            @PathVariable String accountNumber,
+            Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(transactionService.getAccountTransactionHistory(accountNumber, username));
+    }
+
     @Deprecated
     @GetMapping("/transactions/history")
     public ResponseEntity<List<TransactionResponse>> getTransactionHistory(Authentication authentication) {

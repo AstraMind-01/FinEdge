@@ -186,3 +186,9 @@ body {
     @apply font-sans;
   }
 }
+
+select option {
+  background-color: #191f2f !important;
+  color: #dde2f8 !important;
+  padding: 8px 12px;
+}

@@ -4,6 +4,7 @@ import com.onlinebanking.account.dto.AccountResponse;
 import com.onlinebanking.account.dto.BalanceResponse;
 import com.onlinebanking.account.dto.CreateAccountRequest;
 import com.onlinebanking.account.dto.InternalAccountResponse;
+import com.onlinebanking.account.dto.LimitsResponse;
 import com.onlinebanking.account.dto.UpdateAccountStatusRequest;
 import com.onlinebanking.account.entity.Account;
 import com.onlinebanking.account.entity.AccountStatus;
@@ -68,6 +69,61 @@ public class AccountService {
         account.setStatus(request.status());
         Account updated = accountRepository.save(account);
         return mapToResponse(updated);
+    }
+
+    public AccountResponse freezeAccount(Long id, String authenticatedUsername) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found with ID: " + id));
+        validateOwnership(account, authenticatedUsername, false);
+
+        if (account.getStatus() == AccountStatus.FROZEN) {
+            return mapToResponse(account); // idempotent
+        }
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new IllegalStateException("Only ACTIVE accounts can be frozen. Current status: " + account.getStatus());
+        }
+
+        account.setStatus(AccountStatus.FROZEN);
+        Account updated = accountRepository.save(account);
+        return mapToResponse(updated);
+    }
+
+    public AccountResponse unfreezeAccount(Long id, String authenticatedUsername) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found with ID: " + id));
+        validateOwnership(account, authenticatedUsername, false);
+
+        if (account.getStatus() == AccountStatus.ACTIVE) {
+            return mapToResponse(account); // idempotent
+        }
+        if (account.getStatus() != AccountStatus.FROZEN) {
+            throw new IllegalStateException("Only FROZEN accounts can be unfrozen. Current status: " + account.getStatus());
+        }
+
+        account.setStatus(AccountStatus.ACTIVE);
+        Account updated = accountRepository.save(account);
+        return mapToResponse(updated);
+    }
+
+    public LimitsResponse getAccountLimits(Long id, String authenticatedUsername) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found with ID: " + id));
+        validateOwnership(account, authenticatedUsername, false);
+
+        return switch (account.getAccountType()) {
+            case SAVINGS -> new LimitsResponse(
+                    "SAVINGS",
+                    new BigDecimal("200000.00"),
+                    new BigDecimal("50000.00"),
+                    new BigDecimal("200000.00")
+            );
+            case CURRENT -> new LimitsResponse(
+                    "CURRENT",
+                    new BigDecimal("500000.00"),
+                    new BigDecimal("200000.00"),
+                    new BigDecimal("500000.00")
+            );
+        };
     }
 
     // --- Minimal Additive Internal Methods for Step 5 ---

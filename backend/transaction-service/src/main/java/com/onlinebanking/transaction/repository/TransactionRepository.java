@@ -14,4 +14,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByInitiatedByUsernameOrderByCreatedAtDesc(String initiatedByUsername);
 
     boolean existsByTransactionRef(String transactionRef);
+
+    List<Transaction> findByFromAccountNumberOrToAccountNumberOrderByCreatedAtDesc(
+            String fromAccountNumber, String toAccountNumber);
 }
