@@ -28,7 +28,12 @@ export interface Transaction {
   amount: number;
   date: string;
   type: "CREDIT" | "DEBIT";
-  category: "Shopping" | "Food" | "Travel" | "Bills" | "Transfer" | "Salary" | "Others";
+  category: "Shopping" | "Food" | "Travel" | "Bills" | "Transfer" | "Salary" | "Others" | "Investment";
+  status?: "SUCCESS" | "PENDING" | "FAILED";
+  referenceId?: string;
+  paymentMode?: string;
+  remarks?: string;
+  timestamp?: string; // ISO date format for accurate grouping
 }
 
 export type VerificationState = "NOT_VERIFIED" | "VERIFICATION_REQUIRED" | "VERIFYING" | "VERIFIED" | "FAILED";

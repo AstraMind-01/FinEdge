@@ -81,12 +81,21 @@ let accounts: Account[] = [
 ];
 
 let transactions: Transaction[] = [
-  { id: "TX-001", accountId: "ACC-001", merchantName: "TechCorp Salary", amount: 145000, date: "Yesterday, 09:00 AM", type: "CREDIT", category: "Salary" },
-  { id: "TX-002", accountId: "ACC-001", merchantName: "Amazon.in", amount: -4599, date: "Today, 10:42 AM", type: "DEBIT", category: "Shopping" },
-  { id: "TX-003", accountId: "ACC-001", merchantName: "Zomato", amount: -850.50, date: "24 Oct, 08:30 PM", type: "DEBIT", category: "Food" },
-  { id: "TX-004", accountId: "ACC-002", merchantName: "Business Payment", amount: 120000, date: "22 Oct, 11:15 AM", type: "CREDIT", category: "Transfer" },
-  { id: "TX-005", accountId: "ACC-002", merchantName: "Vendor Payment", amount: -35000, date: "21 Oct, 04:20 PM", type: "DEBIT", category: "Transfer" },
-  { id: "TX-006", accountId: "ACC-001", merchantName: "Rahul Kumar", amount: -12000, date: "23 Oct, 02:15 PM", type: "DEBIT", category: "Transfer" },
+  { id: "TX-001", accountId: "ACC-001", merchantName: "TechCorp Salary", amount: 145000, date: "Today, 09:00 AM", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), type: "CREDIT", category: "Salary", status: "SUCCESS", referenceId: "SAL-2026-05", paymentMode: "NEFT", remarks: "May Salary" },
+  { id: "TX-002", accountId: "ACC-001", merchantName: "Amazon.in", amount: -4599, date: "Today, 10:42 AM", timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Shopping", status: "SUCCESS", referenceId: "AMZ-991283", paymentMode: "UPI", remarks: "Electronics" },
+  { id: "TX-003", accountId: "ACC-001", merchantName: "Zomato", amount: -850.50, date: "Yesterday, 08:30 PM", timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Food", status: "SUCCESS", referenceId: "ZMT-88123", paymentMode: "UPI", remarks: "Dinner" },
+  { id: "TX-004", accountId: "ACC-002", merchantName: "Client Payment", amount: 120000, date: "Yesterday, 11:15 AM", timestamp: new Date(Date.now() - 28 * 60 * 60 * 1000).toISOString(), type: "CREDIT", category: "Transfer", status: "SUCCESS", referenceId: "IMPS-009123", paymentMode: "IMPS", remarks: "Invoice #102" },
+  { id: "TX-005", accountId: "ACC-002", merchantName: "Vendor Payment", amount: -35000, date: "2 days ago", timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Transfer", status: "SUCCESS", referenceId: "NEFT-9912", paymentMode: "NEFT", remarks: "Office Supplies" },
+  { id: "TX-006", accountId: "ACC-001", merchantName: "Rahul Kumar", amount: -12000, date: "2 days ago", timestamp: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Transfer", status: "PENDING", referenceId: "UPI-91823", paymentMode: "UPI", remarks: "Rent share" },
+  { id: "TX-007", accountId: "ACC-001", merchantName: "Netflix", amount: -649, date: "3 days ago", timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Bills", status: "SUCCESS", referenceId: "SUB-NET-01", paymentMode: "Card", remarks: "Monthly Subscription" },
+  { id: "TX-008", accountId: "ACC-001", merchantName: "Uber", amount: -350, date: "3 days ago", timestamp: new Date(Date.now() - 75 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Travel", status: "SUCCESS", referenceId: "UBR-9912", paymentMode: "UPI", remarks: "Ride to office" },
+  { id: "TX-009", accountId: "ACC-002", merchantName: "Google Workspace", amount: -4500, date: "4 days ago", timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Bills", status: "SUCCESS", referenceId: "GWS-1123", paymentMode: "Card", remarks: "Cloud Storage" },
+  { id: "TX-010", accountId: "ACC-001", merchantName: "Swiggy Instamart", amount: -1250, date: "4 days ago", timestamp: new Date(Date.now() - 98 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Food", status: "FAILED", referenceId: "SWG-8812", paymentMode: "UPI", remarks: "Timeout error" },
+  { id: "TX-011", accountId: "FD-001", merchantName: "Fixed Deposit Interest", amount: 14500, date: "5 days ago", timestamp: new Date(Date.now() - 120 * 60 * 60 * 1000).toISOString(), type: "CREDIT", category: "Investment", status: "SUCCESS", referenceId: "FD-INT-01", paymentMode: "Internal", remarks: "Annual Interest" },
+  { id: "TX-012", accountId: "ACC-001", merchantName: "MakeMyTrip", amount: -15000, date: "6 days ago", timestamp: new Date(Date.now() - 144 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Travel", status: "SUCCESS", referenceId: "MMT-9182", paymentMode: "Card", remarks: "Flight booking" },
+  { id: "TX-013", accountId: "ACC-001", merchantName: "ATM Withdrawal", amount: -5000, date: "1 week ago", timestamp: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Others", status: "SUCCESS", referenceId: "ATM-9912", paymentMode: "Cash", remarks: "HDFC ATM" },
+  { id: "TX-014", accountId: "ACC-002", merchantName: "Software License", amount: -25000, date: "1 week ago", timestamp: new Date(Date.now() - 170 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Bills", status: "SUCCESS", referenceId: "LIC-001", paymentMode: "Card", remarks: "Annual License" },
+  { id: "TX-015", accountId: "RD-001", merchantName: "RD Installment", amount: -15000, date: "2 weeks ago", timestamp: new Date(Date.now() - 336 * 60 * 60 * 1000).toISOString(), type: "DEBIT", category: "Investment", status: "SUCCESS", referenceId: "RD-INST-01", paymentMode: "Auto-debit", remarks: "Monthly Installment" }
 ];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -96,8 +105,11 @@ export const MockApi = {
     await delay(500);
     return [...accounts];
   },
-  getTransactions: async (accountId: string): Promise<Transaction[]> => {
+  getTransactions: async (accountId?: string): Promise<Transaction[]> => {
     await delay(300);
+    if (!accountId || accountId === "ALL") {
+      return transactions;
+    }
     return transactions.filter(t => t.accountId === accountId);
   },
   transferFunds: async (fromId: string, toId: string, amount: number): Promise<boolean> => {

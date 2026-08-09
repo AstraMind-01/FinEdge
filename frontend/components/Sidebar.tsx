@@ -33,10 +33,10 @@ export default function Sidebar() {
           <Wallet className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Accounts</span>
         </Link>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <Link aria-current={pathname === "/transactions" ? "page" : undefined} className={getLinkClasses("/transactions")} href="/transactions">
           <ReceiptText className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Transactions</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <ArrowLeftRight className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Transfers</span>
