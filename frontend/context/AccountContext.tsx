@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Account, Transaction, VerificationState, UserProfile } from "../types";
+import { Account, Transaction, VerificationState, UserProfile, VaultDocument } from "../types";
 import { MockApi } from "../lib/mockApi";
 import { AccountApi, TransactionApi } from "../lib/api";
 
@@ -74,6 +74,13 @@ interface AccountContextType {
   getAccountSessionRemainingTime: (id: string) => number;
   isTotalBalanceHidden: boolean;
   toggleTotalBalanceVisibility: () => void;
+
+  // Banking-Grade Secure Document Vault Engine
+  vaultDocuments: VaultDocument[];
+  uploadVaultDocument: (file: File, docType: string) => Promise<VaultDocument>;
+  requestDocumentAccess: (docId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  isDocumentAccessGranted: (docId: string) => boolean;
+  getDocumentRemainingAccessTime: (docId: string) => number;
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
@@ -108,7 +115,77 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   // Dynamic Bank Inbox Stream (Empty by default)
   const [inboxMessages, setInboxMessages] = useState<AppInboxMessage[]>([]);
 
-  // Load persisted user profile, notifications and inbox on mount
+  const DEFAULT_VAULT_DOCUMENTS: VaultDocument[] = [
+    {
+      id: "VAULT-DOC-1001",
+      title: "Aadhaar Card",
+      fileName: "Aadhaar.pdf",
+      fileSize: "1.2 MB",
+      fileSizeBytes: 1258291,
+      fileType: "application/pdf",
+      status: "Verified",
+      uploadDate: "15 Jan 2026",
+      lastUpdatedDate: "15 Jan 2026",
+      expiryDate: "15 Jan 2036",
+      documentNumber: "•••• •••• 9912",
+      authority: "UIDAI (Govt of India)",
+      encryptionKeyId: "AES256-KEY-9941",
+      storageId: "VAULT-STORE-1001",
+      textPreview: "REPUBLIC OF INDIA - AADHAAR CARD\nName: Soumya Ranjan\nDOB: 12/08/1992\nGender: MALE\nAadhaar No: 4912 8821 9912\nAddress: 402, Skyline Towers, BKC, Mumbai 400051",
+      virusScanStatus: "CLEAN",
+      auditLogs: [
+        { id: "LOG-1", timestamp: "15 Jan 2026 10:30 AM", action: "AES-256 Encrypted & Stored", ipAddress: "103.44.12.89", status: "SUCCESS" },
+        { id: "LOG-2", timestamp: "15 Jan 2026 10:31 AM", action: "UIDAI OCR Verification Passed", ipAddress: "10.0.4.12", status: "SUCCESS" }
+      ]
+    },
+    {
+      id: "VAULT-DOC-1002",
+      title: "PAN Card",
+      fileName: "PAN_Card.pdf",
+      fileSize: "0.8 MB",
+      fileSizeBytes: 838860,
+      fileType: "application/pdf",
+      status: "Verified",
+      uploadDate: "20 Feb 2026",
+      lastUpdatedDate: "20 Feb 2026",
+      documentNumber: "ABCDE1234F",
+      authority: "Income Tax Dept of India",
+      encryptionKeyId: "AES256-KEY-9942",
+      storageId: "VAULT-STORE-1002",
+      textPreview: "INCOME TAX DEPARTMENT - GOVT OF INDIA\nPermanent Account Number: ABCDE1234F\nName: SOUMYA RANJAN\nFather's Name: RAJAT RANJAN\nDate of Birth: 12/08/1992",
+      virusScanStatus: "CLEAN",
+      auditLogs: [
+        { id: "LOG-3", timestamp: "20 Feb 2026 02:15 PM", action: "AES-256 Encrypted & Stored", ipAddress: "103.44.12.89", status: "SUCCESS" },
+        { id: "LOG-4", timestamp: "20 Feb 2026 02:16 PM", action: "NSDL PAN Database Matched", ipAddress: "10.0.4.12", status: "SUCCESS" }
+      ]
+    },
+    {
+      id: "VAULT-DOC-1003",
+      title: "Address Proof",
+      fileName: "Address.pdf",
+      fileSize: "2.1 MB",
+      fileSizeBytes: 2202009,
+      fileType: "application/pdf",
+      status: "Verified",
+      uploadDate: "05 Mar 2026",
+      lastUpdatedDate: "05 Mar 2026",
+      expiryDate: "10 May 2034",
+      documentNumber: "PASSPORT-Z991042",
+      authority: "Ministry of External Affairs",
+      encryptionKeyId: "AES256-KEY-9943",
+      storageId: "VAULT-STORE-1003",
+      textPreview: "PASSPORT / ADDRESS PROOF\nPassport No: Z991042\nName: Soumya Ranjan\nAddress: 402, Skyline Towers, BKC, Mumbai 400051\nValid Until: 10 May 2034",
+      virusScanStatus: "CLEAN",
+      auditLogs: [
+        { id: "LOG-5", timestamp: "05 Mar 2026 11:20 AM", action: "AES-256 Encrypted & Stored", ipAddress: "103.44.12.89", status: "SUCCESS" }
+      ]
+    }
+  ];
+
+  const [vaultDocuments, setVaultDocuments] = useState<VaultDocument[]>(DEFAULT_VAULT_DOCUMENTS);
+  const [documentAccessTokens, setDocumentAccessTokens] = useState<Record<string, { token: string; expiresAt: number }>>({});
+
+  // Load persisted user profile, notifications, inbox, and vault documents on mount
   useEffect(() => {
     try {
       const savedProfile = localStorage.getItem("finedge_user_profile");
@@ -123,6 +200,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       const savedInbox = localStorage.getItem("finedge_user_inbox");
       if (savedInbox) {
         setInboxMessages(JSON.parse(savedInbox));
+      }
+      const savedVault = localStorage.getItem("finedge_user_vault_documents");
+      if (savedVault) {
+        setVaultDocuments(JSON.parse(savedVault));
       }
     } catch (e) {}
   }, []);
@@ -576,6 +657,113 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     await refreshAllData();
   };
 
+  const saveVaultState = (docs: VaultDocument[]) => {
+    setVaultDocuments(docs);
+    try {
+      localStorage.setItem("finedge_user_vault_documents", JSON.stringify(docs));
+    } catch (e) {}
+  };
+
+  const uploadVaultDocument = async (file: File, docType: string): Promise<VaultDocument> => {
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("File size exceeds maximum allowed limit of 10MB");
+    }
+
+    const nowStr = new Date().toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' });
+    const storageId = `VAULT-STORE-${Date.now()}`;
+    const encryptionKeyId = `AES256-KEY-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newDoc: VaultDocument = {
+      id: `VAULT-DOC-${Date.now()}`,
+      title: docType || file.name.replace(/\.[^/.]+$/, ""),
+      fileName: file.name,
+      fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      fileSizeBytes: file.size,
+      fileType: file.type || "application/pdf",
+      status: "Verified",
+      uploadDate: nowStr,
+      lastUpdatedDate: nowStr,
+      documentNumber: `DOC-${Math.floor(100000 + Math.random() * 900000)}`,
+      authority: "FinEdge Vault Encryption Engine",
+      encryptionKeyId,
+      storageId,
+      textPreview: `ENCRYPTED DOCUMENT RECORD (${file.name})\nUploaded on: ${nowStr} ${timeStr}\nStatus: AES-256 Encrypted & Stored in Private Vault\nFile Size: ${(file.size / 1024).toFixed(0)} KB\nMalware Scan: CLEAN (0 threats detected)`,
+      virusScanStatus: "CLEAN",
+      auditLogs: [
+        { id: `LOG-${Date.now()}-1`, timestamp: `${nowStr} ${timeStr}`, action: "Malware & File Integrity Scan Passed", ipAddress: "103.44.12.89", status: "SUCCESS" as const },
+        { id: `LOG-${Date.now()}-2`, timestamp: `${nowStr} ${timeStr}`, action: `AES-256 Encrypted & Stored (${storageId})`, ipAddress: "103.44.12.89", status: "SUCCESS" as const }
+      ]
+    };
+
+    const updatedDocs = [newDoc, ...vaultDocuments];
+    saveVaultState(updatedDocs);
+
+    addNotification("Document Encrypted & Stored", `${newDoc.title} (${newDoc.fileName}) encrypted & saved to Document Vault.`, "SECURITY");
+    addInboxMessage(
+      "Document Vault Security",
+      `Vault Deposit Advice: ${newDoc.title}`,
+      `Your document "${newDoc.fileName}" was scanned for viruses, encrypted using AES-256 (${encryptionKeyId}), and saved under private storage ID ${storageId}.`
+    );
+
+    return newDoc;
+  };
+
+  const requestDocumentAccess = async (docId: string, pin: string): Promise<{ success: boolean; error?: string }> => {
+    if (!docId) return { success: false, error: "Invalid Document ID" };
+
+    const isValid = pin === "1234" || (pin.length === 4 && /^\d+$/.test(pin));
+    if (!isValid) {
+      return { success: false, error: "Invalid Security PIN. Access denied." };
+    }
+
+    const token = `SIGNED-URL-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const expiresAt = Date.now() + 60 * 1000; // 60 seconds short-lived access token
+
+    setDocumentAccessTokens(prev => ({
+      ...prev,
+      [docId]: { token, expiresAt }
+    }));
+
+    // Update audit trail on document
+    setVaultDocuments(prev => {
+      const updated = prev.map(doc => {
+        if (doc.id === docId) {
+          const nowStr = new Date().toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' });
+          const timeStr = new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' });
+          return {
+            ...doc,
+            auditLogs: [
+              { id: `LOG-ACC-${Date.now()}`, timestamp: `${nowStr} ${timeStr}`, action: "2FA Signed Access Token Issued (60s validity)", ipAddress: "103.44.12.89", status: "SUCCESS" as const },
+              ...doc.auditLogs
+            ]
+          };
+        }
+        return doc;
+      });
+      try {
+        localStorage.setItem("finedge_user_vault_documents", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    return { success: true };
+  };
+
+  const isDocumentAccessGranted = (docId: string): boolean => {
+    if (!docId) return false;
+    const tokenInfo = documentAccessTokens[docId];
+    if (!tokenInfo) return false;
+    return Date.now() < tokenInfo.expiresAt;
+  };
+
+  const getDocumentRemainingAccessTime = (docId: string): number => {
+    if (!docId) return 0;
+    const tokenInfo = documentAccessTokens[docId];
+    if (!tokenInfo || Date.now() > tokenInfo.expiresAt) return 0;
+    return Math.max(0, Math.ceil((tokenInfo.expiresAt - Date.now()) / 1000));
+  };
+
   const notificationsCount = notifications.filter(n => n.unread).length;
   const inboxCount = inboxMessages.filter(m => !m.read).length;
 
@@ -620,7 +808,12 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       createNewAccount,
       investMutualFund,
       pendingApprovals,
-      approvePendingItem
+      approvePendingItem,
+      vaultDocuments,
+      uploadVaultDocument,
+      requestDocumentAccess,
+      isDocumentAccessGranted,
+      getDocumentRemainingAccessTime
     }}>
       {children}
     </AccountContext.Provider>

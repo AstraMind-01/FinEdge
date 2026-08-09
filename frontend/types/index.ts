@@ -318,3 +318,31 @@ export interface UserProfile {
   kycStatus: string;
   memberSince: string;
 }
+
+export interface VaultAuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  ipAddress: string;
+  status: "SUCCESS" | "FAILED" | "BLOCKED";
+}
+
+export interface VaultDocument {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: string;
+  fileSizeBytes: number;
+  fileType: string;
+  status: "Verified" | "Under Review" | "Pending" | "Expired" | "Rejected";
+  uploadDate: string;
+  lastUpdatedDate: string;
+  expiryDate?: string;
+  documentNumber: string;
+  authority: string;
+  encryptionKeyId: string;
+  storageId: string;
+  textPreview: string;
+  virusScanStatus: "CLEAN" | "SCANNING" | "INFECTED";
+  auditLogs: VaultAuditLog[];
+}

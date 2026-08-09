@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from 'react';
 import { 
   ShieldCheck, 
@@ -10,10 +11,20 @@ import {
   Download, 
   RefreshCw, 
   ArrowRight,
-  Shield
+  Shield,
+  Plus,
+  Lock,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import SecurityToggleWarningModal from '../modals/SecurityToggleWarningModal';
 import RevokeDeviceWarningModal from '../modals/RevokeDeviceWarningModal';
+import SecureDocumentAccessModal from '../modals/SecureDocumentAccessModal';
+import KycDocumentViewerModal from '../modals/KycDocumentViewerModal';
+import UpdateKycDocumentModal from '../modals/UpdateKycDocumentModal';
+import { useAccounts } from '../../context/AccountContext';
+import { VaultDocument } from '../../types';
 
 interface SecurityAndDevicesProps {
   nominee?: { name: string; relationship: string; share: string };
@@ -22,6 +33,8 @@ interface SecurityAndDevicesProps {
 }
 
 export default function SecurityAndDevices({ nominee: propNominee, onUpdateNominee, onStartReKyc }: SecurityAndDevicesProps) {
+  const { vaultDocuments, isDocumentAccessGranted } = useAccounts();
+
   const [toggles, setToggles] = useState({
     twoFa: true,
     biometric: true,
@@ -44,6 +57,20 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
 
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<{ id: number; name: string; time: string; isCurrent: boolean } | null>(null);
+
+  // Vault Modals State
+  const [securityModalDoc, setSecurityModalDoc] = useState<VaultDocument | null>(null);
+  const [viewerModalDoc, setViewerModalDoc] = useState<VaultDocument | null>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+
+  const vaultScrollRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollVault = (direction: 'left' | 'right') => {
+    if (vaultScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -220 : 220;
+      vaultScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const nominee = propNominee || { name: "Anjali Ranjan", relationship: "Spouse", share: "100% Share" };
 
@@ -69,23 +96,12 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
     setDevices(prev => prev.filter(d => d.id !== deviceId));
   };
 
-  const handleDownloadVaultDoc = (name: string, size: string) => {
-    const content = `====================================================\n` +
-      `       FINEDGE BANK - VAULT DOCUMENT DOCUMENT\n` +
-      `====================================================\n\n` +
-      `File Name : ${name}\n` +
-      `File Size : ${size}\n` +
-      `Owner     : Soumya Ranjan\n` +
-      `Encrypted : SHA-256 Verified\n\n` +
-      `====================================================`;
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name.replace('.pdf', '.txt');
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDocumentClick = (doc: VaultDocument) => {
+    if (isDocumentAccessGranted(doc.id)) {
+      setViewerModalDoc(doc);
+    } else {
+      setSecurityModalDoc(doc);
+    }
   };
 
   const ToggleSwitch = ({ active, onClick }: { active: boolean, onClick: () => void }) => (
@@ -113,7 +129,6 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
         </div>
         
         <div className="flex flex-col gap-4">
-          {/* Toggle Rows */}
           <div className="flex items-center justify-between p-3 -mx-3 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer group" onClick={() => handlePromptToggle('twoFa', 'Two-Factor Auth (2FA)')}>
             <div className="flex flex-col">
               <span className="text-sm text-on-surface">Two-Factor Auth (2FA)</span>
@@ -204,40 +219,93 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
       {/* 4. Document Vault Card */}
       <div className="bg-surface-container rounded-xl border border-surface-container-highest overflow-hidden shadow-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold m-0">Document Vault</h3>
-          <FolderOpen className="text-on-surface-variant w-5 h-5" />
+          <div className="flex items-center gap-2">
+            <FolderOpen className="text-primary w-5 h-5" />
+            <h3 className="text-xl font-semibold m-0">Document Vault</h3>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Sleek Carousel Navigation Arrows */}
+            <div className="flex items-center gap-1 bg-surface-container-high p-1 rounded-xl border border-white/5 shadow-inner">
+              <button
+                type="button"
+                onClick={() => scrollVault('left')}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-variant transition-all cursor-pointer"
+                title="Previous Document"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollVault('right')}
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-variant transition-all cursor-pointer"
+                title="Next Document"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsUploadOpen(true)}
+              className="px-3.5 py-2 bg-primary/10 border border-primary/30 text-primary hover:bg-primary hover:text-on-primary font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-[0_0_15px_rgba(240,180,41,0.3)]"
+            >
+              <Plus size={14} /> Upload Document
+            </button>
+          </div>
         </div>
         
         {/* Horizontal Scroll Container */}
-        <div className="flex gap-4 overflow-x-auto pb-3 snap-x scrollbar-hide">
-          {[
-            { name: "Aadhaar.pdf", size: "1.2 MB" },
-            { name: "PAN_Card.pdf", size: "0.8 MB" },
-            { name: "Address.pdf", size: "2.1 MB" }
-          ].map((doc, idx) => (
-            <div 
-              key={idx} 
-              onClick={() => handleDownloadVaultDoc(doc.name, doc.size)}
-              className="min-w-[120px] bg-surface-container-highest/50 rounded-lg p-3 flex flex-col gap-3 border border-surface-variant hover:border-primary/50 transition-colors cursor-pointer group snap-start shrink-0 relative overflow-hidden"
-            >
-              <div className="h-16 bg-[#1E293B] rounded flex items-center justify-center relative overflow-hidden">
-                <FileText className="text-on-surface-variant w-8 h-8 opacity-50" />
-                {/* Subtle mock document lines */}
-                <div className="absolute inset-2 flex flex-col gap-1 opacity-20">
-                  <div className="h-1 w-3/4 bg-current"></div>
-                  <div className="h-1 w-full bg-current"></div>
-                  <div className="h-1 w-5/6 bg-current"></div>
+        <div 
+          ref={vaultScrollRef}
+          className="flex gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar scroll-smooth"
+        >
+          {vaultDocuments.map((doc) => {
+            const isAccessActive = isDocumentAccessGranted(doc.id);
+
+            return (
+              <div 
+                key={doc.id} 
+                onClick={() => handleDocumentClick(doc)}
+                className="min-w-[150px] bg-surface-container-highest/50 rounded-xl p-3 flex flex-col gap-2.5 border border-surface-variant hover:border-primary/50 transition-colors cursor-pointer group snap-start shrink-0 relative overflow-hidden"
+              >
+                <div className="h-16 bg-[#1E293B] rounded-lg flex items-center justify-center relative overflow-hidden">
+                  <FileText className="text-on-surface-variant w-8 h-8 opacity-50" />
+                  <div className="absolute inset-2 flex flex-col gap-1 opacity-20">
+                    <div className="h-1 w-3/4 bg-current"></div>
+                    <div className="h-1 w-full bg-current"></div>
+                    <div className="h-1 w-5/6 bg-current"></div>
+                  </div>
+                  <div className="absolute inset-0 bg-surface/80 opacity-0 group-hover:opacity-100 flex items-center justify-center backdrop-blur-[2px] transition-all">
+                    {isAccessActive ? (
+                      <span className="text-tertiary text-[10px] font-bold uppercase flex items-center gap-1">
+                        <CheckCircle2 size={14} /> Preview
+                      </span>
+                    ) : (
+                      <span className="text-primary text-[10px] font-bold uppercase flex items-center gap-1">
+                        <Lock size={14} /> 2FA Unlock
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="absolute inset-0 bg-surface/60 opacity-0 group-hover:opacity-100 flex items-center justify-center backdrop-blur-[2px] transition-all">
-                  <Download className="text-primary w-5 h-5" />
+
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-on-surface truncate max-w-[90px]">{doc.fileName}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                      doc.status === 'Verified' ? 'text-teal-400 bg-teal-500/10' : 'text-amber-400 bg-amber-500/10'
+                    }`}>
+                      {doc.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-on-surface-variant">
+                    <span>{doc.fileSize}</span>
+                    <span className="font-mono">{doc.uploadDate}</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-on-surface truncate">{doc.name}</span>
-                <span className="text-[10px] text-on-surface-variant">{doc.size}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -253,7 +321,7 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
           <button 
             type="button"
             onClick={onStartReKyc}
-            className="mt-2 bg-primary text-on-primary font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-primary-fixed hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all w-full flex justify-center items-center gap-2"
+            className="mt-2 bg-primary text-on-primary font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-primary-fixed hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all w-full flex justify-center items-center gap-2 cursor-pointer"
           >
             Start Re-KYC
             <ArrowRight className="w-4 h-4" />
@@ -276,6 +344,30 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
         onClose={() => setRevokeModalOpen(false)}
         device={selectedDevice}
         onConfirmRevoke={handleConfirmRevokeDevice}
+      />
+
+      {/* DOCUMENT VAULT SECURITY MODALS */}
+      <SecureDocumentAccessModal
+        documentItem={securityModalDoc}
+        onClose={() => setSecurityModalDoc(null)}
+        onSuccess={(doc) => {
+          setSecurityModalDoc(null);
+          setViewerModalDoc(doc);
+        }}
+      />
+
+      <KycDocumentViewerModal
+        isOpen={!!viewerModalDoc}
+        onClose={() => setViewerModalDoc(null)}
+        documentTitle={viewerModalDoc?.title || "Document"}
+        documentStatus={viewerModalDoc?.status || "Verified"}
+        vaultDoc={viewerModalDoc}
+      />
+
+      <UpdateKycDocumentModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        documentTitle="Vault Document"
       />
       
     </div>
