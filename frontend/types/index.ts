@@ -193,3 +193,18 @@ export interface PortfolioDataPoint {
   date: string;
   value: number;
 }
+
+export interface Deposit {
+  id: string;
+  type: "FD" | "RD";
+  name: string;
+  principalAmount: number;
+  interestRate: number;
+  maturityDate: string;
+  maturityAmount: number;
+  startDate: string;
+  status: "ACTIVE" | "MATURED" | "BROKEN";
+  monthlyInstallment?: number; // for RD
+  nextDueDate?: string; // for RD
+  accumulatedAmount?: number; // for RD
+}

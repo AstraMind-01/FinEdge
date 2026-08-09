@@ -32,8 +32,12 @@ export default function Sidebar() {
           <span className="text-[13px] truncate">Dashboard</span>
         </Link>
         <Link aria-current={pathname === "/accounts" ? "page" : undefined} className={getLinkClasses("/accounts")} href="/accounts">
-          <Wallet className="mr-3 shrink-0" size={18} />
-          <span className="text-[13px] truncate">Accounts</span>
+          <Landmark className="mr-3 shrink-0" size={18} />
+          <span className="text-[13px] truncate">My Accounts</span>
+        </Link>
+        <Link aria-current={pathname === "/deposits" ? "page" : undefined} className={getLinkClasses("/deposits")} href="/deposits">
+          <Landmark className="mr-3 shrink-0" size={18} />
+          <span className="text-[13px] truncate">Deposits</span>
         </Link>
         <Link aria-current={pathname === "/transactions" ? "page" : undefined} className={getLinkClasses("/transactions")} href="/transactions">
           <ReceiptText className="mr-3 shrink-0" size={18} />

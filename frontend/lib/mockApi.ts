@@ -1,4 +1,4 @@
-import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer, Loan, Holding, SIP, InvestmentGoal, PortfolioDataPoint } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer, Loan, Holding, SIP, InvestmentGoal, PortfolioDataPoint, Deposit } from "../types";
 
 let accounts: Account[] = [
   {
@@ -447,5 +447,46 @@ export const MockApi = {
       data.push({ date: months[i], value: Math.round(base + (i * 15000) + (Math.random() * 20000 - 5000)) });
     }
     return data;
+  },
+  getDeposits: async (): Promise<Deposit[]> => {
+    await delay(300);
+    return [
+      {
+        id: "FD-001",
+        type: "FD",
+        name: "Tax Saver FD",
+        principalAmount: 150000,
+        interestRate: 7.1,
+        startDate: "2023-04-01",
+        maturityDate: "2028-04-01",
+        maturityAmount: 213388,
+        status: "ACTIVE"
+      },
+      {
+        id: "FD-002",
+        type: "FD",
+        name: "High Yield FD",
+        principalAmount: 500000,
+        interestRate: 7.5,
+        startDate: "2025-01-15",
+        maturityDate: "2026-01-15",
+        maturityAmount: 538562,
+        status: "ACTIVE"
+      },
+      {
+        id: "RD-001",
+        type: "RD",
+        name: "Dream Home Fund",
+        principalAmount: 0,
+        interestRate: 6.8,
+        startDate: "2024-06-10",
+        maturityDate: "2026-06-10",
+        maturityAmount: 135000,
+        status: "ACTIVE",
+        monthlyInstallment: 5000,
+        nextDueDate: "2026-09-10",
+        accumulatedAmount: 125000
+      }
+    ];
   }
 };
