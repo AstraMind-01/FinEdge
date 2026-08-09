@@ -85,10 +85,10 @@ export default function Sidebar() {
           <UserCheck className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">KYC & Profile</span>
         </Link>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <Link aria-current={pathname === "/beneficiaries" ? "page" : undefined} className={getLinkClasses("/beneficiaries")} href="/beneficiaries">
           <Users className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Beneficiaries</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <ShieldAlert className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Disputes</span>
