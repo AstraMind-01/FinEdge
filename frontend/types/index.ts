@@ -131,3 +131,31 @@ export interface CardOffer {
   validTill: string;
 }
 
+export interface LoanEmi {
+  month: string;
+  dueDate: string;
+  amount: number;
+  principal: number;
+  interest: number;
+  status: "PAID" | "UPCOMING" | "OVERDUE";
+}
+
+export interface Loan {
+  id: string;
+  type: "HOME" | "PERSONAL" | "CAR" | "EDUCATION";
+  name: string;
+  accountNumber: string;
+  status: "ACTIVE" | "CLOSED" | "OVERDUE";
+  originalAmount: number;
+  outstandingBalance: number;
+  interestRate: number;
+  totalTenure: number; // months
+  emiPaid: number; // months paid
+  nextEmiAmount: number;
+  nextEmiDate: string;
+  monthlyEmi: number;
+  disbursementDate: string;
+  interestPaidThisYear: number;
+  overdueCount?: number;
+  emiSchedule: LoanEmi[];
+}

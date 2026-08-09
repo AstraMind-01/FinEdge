@@ -72,10 +72,10 @@ export default function Sidebar() {
           <CreditCard className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Cards</span>
         </Link>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        <Link aria-current={pathname === "/loans" ? "page" : undefined} className={getLinkClasses("/loans")} href="/loans">
           <Landmark className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Loans</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <TrendingUp className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Investments</span>

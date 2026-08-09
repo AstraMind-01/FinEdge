@@ -1,4 +1,4 @@
-import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer, Loan } from "../types";
 
 let accounts: Account[] = [
   {
@@ -328,6 +328,86 @@ export const MockApi = {
         merchantLogo: "coffee",
         discountDesc: "20% off on weekend dining",
         validTill: "30 Sep 2026"
+      }
+    ];
+  },
+  getLoans: async (): Promise<Loan[]> => {
+    await delay(400);
+    return [
+      {
+        id: "LOAN-001",
+        type: "HOME",
+        name: "Home Loan - HL2022001",
+        accountNumber: "HL-XXXX-XXXX-4412",
+        status: "ACTIVE",
+        originalAmount: 5000000,
+        outstandingBalance: 4350000,
+        interestRate: 8.50,
+        totalTenure: 240,
+        emiPaid: 30,
+        nextEmiAmount: 43391,
+        nextEmiDate: "15 Aug 2026",
+        monthlyEmi: 43391,
+        disbursementDate: "15 Feb 2024",
+        interestPaidThisYear: 185000,
+        emiSchedule: [
+          { month: "May 2026", dueDate: "15 May 2026", amount: 43391, principal: 8200, interest: 35191, status: "PAID" },
+          { month: "Jun 2026", dueDate: "15 Jun 2026", amount: 43391, principal: 8258, interest: 35133, status: "PAID" },
+          { month: "Jul 2026", dueDate: "15 Jul 2026", amount: 43391, principal: 8317, interest: 35074, status: "PAID" },
+          { month: "Aug 2026", dueDate: "15 Aug 2026", amount: 43391, principal: 8376, interest: 35015, status: "UPCOMING" },
+          { month: "Sep 2026", dueDate: "15 Sep 2026", amount: 43391, principal: 8435, interest: 34956, status: "UPCOMING" },
+          { month: "Oct 2026", dueDate: "15 Oct 2026", amount: 43391, principal: 8495, interest: 34896, status: "UPCOMING" }
+        ]
+      },
+      {
+        id: "LOAN-002",
+        type: "PERSONAL",
+        name: "Personal Loan - PL2024001",
+        accountNumber: "PL-XXXX-XXXX-7891",
+        status: "OVERDUE",
+        originalAmount: 500000,
+        outstandingBalance: 280000,
+        interestRate: 12.00,
+        totalTenure: 36,
+        emiPaid: 16,
+        nextEmiAmount: 16607,
+        nextEmiDate: "05 Jul 2026",
+        monthlyEmi: 16607,
+        disbursementDate: "05 Mar 2025",
+        interestPaidThisYear: 22400,
+        overdueCount: 2,
+        emiSchedule: [
+          { month: "May 2026", dueDate: "05 May 2026", amount: 16607, principal: 11407, interest: 5200, status: "PAID" },
+          { month: "Jun 2026", dueDate: "05 Jun 2026", amount: 16607, principal: 11521, interest: 5086, status: "OVERDUE" },
+          { month: "Jul 2026", dueDate: "05 Jul 2026", amount: 16607, principal: 11636, interest: 4971, status: "OVERDUE" },
+          { month: "Aug 2026", dueDate: "05 Aug 2026", amount: 16607, principal: 11752, interest: 4855, status: "UPCOMING" },
+          { month: "Sep 2026", dueDate: "05 Sep 2026", amount: 16607, principal: 11870, interest: 4737, status: "UPCOMING" },
+          { month: "Oct 2026", dueDate: "05 Oct 2026", amount: 16607, principal: 11989, interest: 4618, status: "UPCOMING" }
+        ]
+      },
+      {
+        id: "LOAN-003",
+        type: "CAR",
+        name: "Car Loan - CL2021001",
+        accountNumber: "CL-XXXX-XXXX-3310",
+        status: "ACTIVE",
+        originalAmount: 800000,
+        outstandingBalance: 65000,
+        interestRate: 9.25,
+        totalTenure: 60,
+        emiPaid: 55,
+        nextEmiAmount: 16720,
+        nextEmiDate: "20 Aug 2026",
+        monthlyEmi: 16720,
+        disbursementDate: "20 Sep 2021",
+        interestPaidThisYear: 8500,
+        emiSchedule: [
+          { month: "May 2026", dueDate: "20 May 2026", amount: 16720, principal: 16220, interest: 500, status: "PAID" },
+          { month: "Jun 2026", dueDate: "20 Jun 2026", amount: 16720, principal: 16345, interest: 375, status: "PAID" },
+          { month: "Jul 2026", dueDate: "20 Jul 2026", amount: 16720, principal: 16470, interest: 250, status: "PAID" },
+          { month: "Aug 2026", dueDate: "20 Aug 2026", amount: 16720, principal: 16595, interest: 125, status: "UPCOMING" },
+          { month: "Sep 2026", dueDate: "20 Sep 2026", amount: 16720, principal: 16720, interest: 0, status: "UPCOMING" }
+        ]
       }
     ];
   }
