@@ -75,7 +75,8 @@ interface AccountContextType {
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
-  const [userProfile, setUserProfile] = useState<UserProfile>({
+  // Default profile — used as fallback when nothing is persisted
+  const DEFAULT_USER_PROFILE: UserProfile = {
     name: "Soumya Ranjan",
     email: "soumya@finedge.bank",
     phone: "+91 98765 43210",
@@ -85,7 +86,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     customerID: "FE9842",
     kycStatus: "Fully Verified",
     memberSince: "Oct 2021"
-  });
+  };
+
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -100,9 +103,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   // Dynamic Bank Inbox Stream (Empty by default)
   const [inboxMessages, setInboxMessages] = useState<AppInboxMessage[]>([]);
 
-  // Load persisted notifications and inbox on mount
+  // Load persisted user profile, notifications and inbox on mount
   useEffect(() => {
     try {
+      const savedProfile = localStorage.getItem("finedge_user_profile");
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        setUserProfile(prev => ({ ...prev, ...parsed }));
+      }
       const savedNotifs = localStorage.getItem("finedge_user_notifications");
       if (savedNotifs) {
         setNotifications(JSON.parse(savedNotifs));
@@ -113,6 +121,15 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {}
   }, []);
+
+  const saveUserProfileState = (newProfile: UserProfile) => {
+    setUserProfile(newProfile);
+    try {
+      localStorage.setItem("finedge_user_profile", JSON.stringify(newProfile));
+    } catch (e) {
+      console.error("Failed to persist user profile:", e);
+    }
+  };
 
   const saveNotificationsState = (newNotifs: AppNotification[]) => {
     setNotifications(newNotifs);
@@ -178,7 +195,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserProfile = (updated: Partial<UserProfile>) => {
-    setUserProfile(prev => ({ ...prev, ...updated }));
+    const newProfile = { ...userProfile, ...updated };
+    saveUserProfileState(newProfile);
     addNotification("Profile Updated", `Your personal profile details were updated successfully.`, "SECURITY");
     addInboxMessage(
       "FinEdge Security",
