@@ -1,4 +1,4 @@
-import { Account, Transaction } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer } from "../types";
 
 let accounts: Account[] = [
   {
@@ -111,6 +111,53 @@ export const MockApi = {
       return transactions;
     }
     return transactions.filter(t => t.accountId === accountId);
+  },
+  getBeneficiaries: async (): Promise<Beneficiary[]> => {
+    await delay(300);
+    return [
+      { id: "BEN-01", name: "Rajat Sharma", bankName: "ICICI Bank", accountNumber: "xxxx-xxxx-3412", ifsc: "ICIC0001234", upiId: "rajat.s@icici" },
+      { id: "BEN-02", name: "Sneha Gupta", bankName: "SBI", accountNumber: "xxxx-xxxx-9912", ifsc: "SBIN0004321", upiId: "sneha.g@sbi" },
+      { id: "BEN-03", name: "Aakash Singh", bankName: "Axis Bank", accountNumber: "xxxx-xxxx-8811", ifsc: "UTIB0009876", upiId: "aakash@okaxis" },
+      { id: "BEN-04", name: "Priya Ranjan", bankName: "HDFC Bank", accountNumber: "xxxx-xxxx-4411", ifsc: "HDFC0001111", upiId: "priya@hdfcbank" }
+    ];
+  },
+  getScheduledTransfers: async (): Promise<ScheduledTransfer[]> => {
+    await delay(300);
+    return [
+      { 
+        id: "SCH-01", beneficiaryId: "BEN-04", beneficiaryName: "HDFC Bank Home Loan", 
+        purpose: "EMI", fromAccountId: "ACC-01", amount: 25000, frequency: "MONTHLY", 
+        isRecurring: true, transferMode: "NEFT", startDate: "15 Jan 2026", nextDate: "15 Sep 2026", 
+        status: "ACTIVE", history: [
+          { date: "15 Aug 2026", amount: 25000, status: "SUCCESS" },
+          { date: "15 Jul 2026", amount: 25000, status: "SUCCESS" }
+        ]
+      },
+      { 
+        id: "SCH-02", beneficiaryId: "BEN-01", beneficiaryName: "Rajat Sharma", 
+        purpose: "Rent", fromAccountId: "ACC-01", amount: 15000, frequency: "MONTHLY", 
+        isRecurring: true, transferMode: "IMPS", startDate: "01 Feb 2026", nextDate: "01 Sep 2026", 
+        status: "ACTIVE", history: [
+          { date: "01 Aug 2026", amount: 15000, status: "SUCCESS" }
+        ]
+      },
+      { 
+        id: "SCH-03", beneficiaryId: "BEN-02", beneficiaryName: "Sneha Gupta", 
+        purpose: "Family Support", fromAccountId: "ACC-02", amount: 5000, frequency: "ONCE", 
+        isRecurring: false, transferMode: "UPI", startDate: "12 Aug 2026", nextDate: "12 Aug 2026", 
+        status: "FAILED", history: [
+          { date: "12 Aug 2026", amount: 5000, status: "FAILED" }
+        ]
+      },
+      { 
+        id: "SCH-04", beneficiaryId: "BEN-03", beneficiaryName: "Aakash Singh", 
+        purpose: "Utility Bill", fromAccountId: "ACC-01", amount: 2500, frequency: "MONTHLY", 
+        isRecurring: true, transferMode: "IMPS", startDate: "10 Mar 2026", nextDate: "10 Sep 2026", 
+        status: "PAUSED", history: [
+          { date: "10 Aug 2026", amount: 2500, status: "SUCCESS" }
+        ]
+      }
+    ];
   },
   transferFunds: async (fromId: string, toId: string, amount: number): Promise<boolean> => {
     await delay(800);

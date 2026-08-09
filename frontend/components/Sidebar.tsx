@@ -5,17 +5,19 @@ import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Wallet, ReceiptText, ArrowLeftRight, 
   CreditCard, Landmark, TrendingUp, UserCheck, 
-  Users, ShieldAlert, Bell, BarChart3, ShieldCheck, Headphones
+  Users, ShieldAlert, Bell, BarChart3, ShieldCheck, Headphones,
+  ChevronDown, ChevronUp, Send, CalendarClock, Globe
 } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [transfersExpanded, setTransfersExpanded] = React.useState(pathname.startsWith('/transfers'));
 
-  const getLinkClasses = (path: string) => {
-    const isActive = pathname === path;
+  const getLinkClasses = (path: string, exact: boolean = true) => {
+    const isActive = exact ? pathname === path : pathname.startsWith(path);
     return isActive 
       ? "flex items-center px-4 py-3 rounded-xl transition-all group bg-primary-container text-on-primary-container font-medium shadow-[0_0_15px_rgba(240,180,41,0.2)]"
-      : "flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all";
+      : "flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all cursor-pointer";
   };
 
   return (
@@ -24,7 +26,7 @@ export default function Sidebar() {
         <img alt="FinEdge Logo" className="h-8 w-auto object-contain shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA93UJcFlEZSFTrs-M5PKe3T_TmtmlYjPa96Y93tVBUV_UyTwyqG7ib7bWKaCpSBmsg5l4KSFWe4SPdzLzeYNVUWjDjQK6HdYKHVX3Jn1HOQlVeu3B8FfGeRgRevOiGsKnYTGM-388EOt9bZbyw_51OdFq1hbQQPAAwLD_hU4bU6kaQkkvApPF3M5Ztp9D-ND3pfBikbyo7e7XD9h-sIT6NvQ2hiX59wWSEf8cz4iU8vJZExYHw0I4mw"/>
         <span className="font-headline-lg text-[18px] text-primary tracking-tight truncate">FinEdge</span>
       </div>
-      <nav className="flex-1 px-4 space-y-2 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto overflow-x-hidden hide-scrollbar pb-6">
         <Link aria-current={pathname === "/" ? "page" : undefined} className={getLinkClasses("/")} href="/">
           <LayoutDashboard className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Dashboard</span>
@@ -37,10 +39,35 @@ export default function Sidebar() {
           <ReceiptText className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Transactions</span>
         </Link>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
-          <ArrowLeftRight className="mr-3 shrink-0" size={18} />
-          <span className="text-[13px] truncate">Transfers</span>
-        </a>
+        
+        {/* Expandable Transfers Menu */}
+        <div className="flex flex-col space-y-1">
+          <div 
+            className={getLinkClasses("/transfers", false)} 
+            onClick={() => {
+              setTransfersExpanded(!transfersExpanded);
+              if (!pathname.startsWith("/transfers")) {
+                window.location.href = "/transfers/fund-transfer";
+              }
+            }}
+          >
+            <ArrowLeftRight className="mr-3 shrink-0" size={18} />
+            <span className="text-[13px] truncate flex-1">Transfers</span>
+            {transfersExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+          
+          <div className={`flex flex-col ml-11 space-y-1 overflow-hidden transition-all duration-300 ${transfersExpanded ? 'max-h-[150px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+            <Link href="/transfers/fund-transfer" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname.includes('/transfers/fund-transfer') ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
+              <Send className="mr-2" size={14} /> Fund Transfer
+            </Link>
+            <Link href="/transfers/scheduled" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname.includes('/transfers/scheduled') ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
+              <CalendarClock className="mr-2" size={14} /> Scheduled Transfers
+            </Link>
+            <Link href="/transfers" className={`flex items-center py-2 text-[12px] hover:text-primary transition-colors ${pathname === '/transfers/international' ? 'text-primary font-medium' : 'text-on-surface-variant'}`}>
+              <Globe className="mr-2" size={14} /> International Transfer
+            </Link>
+          </div>
+        </div>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <CreditCard className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Cards</span>

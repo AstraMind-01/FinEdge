@@ -37,3 +37,36 @@ export interface Transaction {
 }
 
 export type VerificationState = "NOT_VERIFIED" | "VERIFICATION_REQUIRED" | "VERIFYING" | "VERIFIED" | "FAILED";
+
+export interface Beneficiary {
+  id: string;
+  name: string;
+  bankName: string;
+  accountNumber: string;
+  ifsc: string;
+  upiId?: string;
+  avatarUrl?: string;
+}
+
+export interface ScheduledTransferHistory {
+  date: string;
+  amount: number;
+  status: "SUCCESS" | "FAILED" | "PENDING";
+}
+
+export interface ScheduledTransfer {
+  id: string;
+  beneficiaryId: string;
+  beneficiaryName: string;
+  purpose: string;
+  fromAccountId: string;
+  amount: number;
+  frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "ONCE";
+  isRecurring: boolean;
+  transferMode: "IMPS" | "NEFT" | "RTGS" | "UPI";
+  startDate: string;
+  endDate?: string;
+  nextDate: string;
+  status: "ACTIVE" | "PAUSED" | "CANCELLED" | "COMPLETED" | "FAILED";
+  history: ScheduledTransferHistory[];
+}
