@@ -1,4 +1,4 @@
-import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer, Loan } from "../types";
+import { Account, Transaction, Beneficiary, ScheduledTransfer, IntlBeneficiary, ExchangeRate, BankCard, CardOffer, Loan, Holding, SIP, InvestmentGoal, PortfolioDataPoint } from "../types";
 
 let accounts: Account[] = [
   {
@@ -410,5 +410,42 @@ export const MockApi = {
         ]
       }
     ];
+  },
+  getHoldings: async (): Promise<Holding[]> => {
+    await delay(300);
+    return [
+      { id: "H-01", name: "Axis Bluechip Fund", category: "Equity", type: "MUTUAL_FUND", investedAmount: 200000, currentValue: 245000, returnPercent: 22.5, returnAmount: 45000, units: 1245.32, nav: 196.72 },
+      { id: "H-02", name: "HDFC Mid-Cap Opportunities", category: "Equity", type: "MUTUAL_FUND", investedAmount: 150000, currentValue: 182000, returnPercent: 21.3, returnAmount: 32000, units: 890.15, nav: 204.46 },
+      { id: "H-03", name: "Nippon India Gold ETF", category: "Gold", type: "ETF", investedAmount: 100000, currentValue: 118500, returnPercent: 18.5, returnAmount: 18500, units: 20, nav: 5925 },
+      { id: "H-04", name: "Reliance Industries", category: "Equity", type: "STOCK", investedAmount: 125000, currentValue: 142800, returnPercent: 14.24, returnAmount: 17800, units: 50, nav: 2856 },
+      { id: "H-05", name: "ICICI Prudential Corporate Bond", category: "Debt", type: "BOND", investedAmount: 200000, currentValue: 214200, returnPercent: 7.1, returnAmount: 14200, units: 8500, nav: 25.20 },
+      { id: "H-06", name: "SBI Small Cap Fund", category: "Equity", type: "MUTUAL_FUND", investedAmount: 75000, currentValue: 68000, returnPercent: -9.33, returnAmount: -7000, units: 450.22, nav: 151.04 }
+    ];
+  },
+  getSIPs: async (): Promise<SIP[]> => {
+    await delay(200);
+    return [
+      { id: "SIP-01", fundName: "Axis Bluechip Fund", monthlyAmount: 10000, nextDebitDate: "15 Aug 2026", status: "ACTIVE" },
+      { id: "SIP-02", fundName: "HDFC Mid-Cap Opportunities", monthlyAmount: 5000, nextDebitDate: "10 Aug 2026", status: "ACTIVE" },
+      { id: "SIP-03", fundName: "SBI Small Cap Fund", monthlyAmount: 5000, nextDebitDate: "20 Aug 2026", status: "PAUSED" }
+    ];
+  },
+  getInvestmentGoals: async (): Promise<InvestmentGoal[]> => {
+    await delay(200);
+    return [
+      { id: "GOAL-01", name: "Retirement Fund", targetAmount: 10000000, currentAmount: 4500000, percentAchieved: 45 },
+      { id: "GOAL-02", name: "Child Education", targetAmount: 3000000, currentAmount: 950000, percentAchieved: 32 },
+      { id: "GOAL-03", name: "Dream Home Down Payment", targetAmount: 2000000, currentAmount: 1600000, percentAchieved: 80 }
+    ];
+  },
+  getPortfolioData: async (): Promise<PortfolioDataPoint[]> => {
+    await delay(100);
+    const base = 800000;
+    const data: PortfolioDataPoint[] = [];
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    for (let i = 0; i < 12; i++) {
+      data.push({ date: months[i], value: Math.round(base + (i * 15000) + (Math.random() * 20000 - 5000)) });
+    }
+    return data;
   }
 };

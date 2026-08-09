@@ -159,3 +159,37 @@ export interface Loan {
   overdueCount?: number;
   emiSchedule: LoanEmi[];
 }
+
+export interface Holding {
+  id: string;
+  name: string;
+  category: "Equity" | "Debt" | "Hybrid" | "Gold" | "Bond";
+  type: "MUTUAL_FUND" | "STOCK" | "ETF" | "BOND" | "FD";
+  investedAmount: number;
+  currentValue: number;
+  returnPercent: number;
+  returnAmount: number;
+  units?: number;
+  nav?: number;
+}
+
+export interface SIP {
+  id: string;
+  fundName: string;
+  monthlyAmount: number;
+  nextDebitDate: string;
+  status: "ACTIVE" | "PAUSED";
+}
+
+export interface InvestmentGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  percentAchieved: number;
+}
+
+export interface PortfolioDataPoint {
+  date: string;
+  value: number;
+}
