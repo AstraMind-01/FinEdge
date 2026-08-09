@@ -1,4 +1,7 @@
+"use client";
 import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Wallet, ReceiptText, ArrowLeftRight, 
   CreditCard, Landmark, TrendingUp, UserCheck, 
@@ -6,6 +9,15 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
+  const getLinkClasses = (path: string) => {
+    const isActive = pathname === path;
+    return isActive 
+      ? "flex items-center px-4 py-3 rounded-xl transition-all group bg-primary-container text-on-primary-container font-medium shadow-[0_0_15px_rgba(240,180,41,0.2)]"
+      : "flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all";
+  };
+
   return (
     <aside className="fixed hidden lg:flex left-0 top-0 h-full w-[230px] bg-surface-container-low z-50 flex-col">
       <div className="px-6 py-8 flex items-center gap-3">
@@ -13,14 +25,14 @@ export default function Sidebar() {
         <span className="font-headline-lg text-[18px] text-primary tracking-tight truncate">FinEdge</span>
       </div>
       <nav className="flex-1 px-4 space-y-2 overflow-y-auto overflow-x-hidden">
-        <a aria-current="page" className="flex items-center px-4 py-3 rounded-xl transition-all group bg-primary-container text-on-primary-container font-medium shadow-[0_0_15px_rgba(240,180,41,0.2)]" href="#!">
+        <Link aria-current={pathname === "/" ? "page" : undefined} className={getLinkClasses("/")} href="/">
           <LayoutDashboard className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Dashboard</span>
-        </a>
-        <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
+        </Link>
+        <Link aria-current={pathname === "/accounts" ? "page" : undefined} className={getLinkClasses("/accounts")} href="/accounts">
           <Wallet className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Accounts</span>
-        </a>
+        </Link>
         <a className="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#!">
           <ReceiptText className="mr-3 shrink-0" size={18} />
           <span className="text-[13px] truncate">Transactions</span>

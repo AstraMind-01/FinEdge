@@ -1,15 +1,24 @@
 export interface Account {
   id: string;
-  type: "SAVINGS" | "CURRENT" | "FIXED_DEPOSIT";
+  type: "SAVINGS" | "CURRENT" | "FIXED_DEPOSIT" | "RECURRING_DEPOSIT";
   name: string;
   maskedNumber: string;
   lastFour: string;
   balance: number;
   currency: string;
-  status: "ACTIVE" | "FROZEN" | "CLOSED";
+  status: "ACTIVE" | "FROZEN" | "CLOSED" | "DORMANT";
   accountHolder: string;
   interestRate?: number;
   maturityDate?: string;
+  ifsc?: string;
+  branch?: string;
+  openingDate?: string;
+  nominee?: string;
+  nomineeRelation?: string;
+  interestEarned?: number;
+  minBalance?: number;
+  linkedCard?: string;
+  monthlyInstallment?: number;
 }
 
 export interface Transaction {
