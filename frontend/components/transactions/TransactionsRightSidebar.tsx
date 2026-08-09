@@ -83,13 +83,15 @@ export default function TransactionsRightSidebar({ onFilterByMerchant }: Transac
       // Get the default account for the statement or mock one if undefined
       const account = accounts.length > 0 ? accounts[0] : {
         id: 'ALL',
-        type: 'Savings',
+        type: 'SAVINGS',
         name: 'All Accounts',
         accountNumber: 'N/A',
         maskedNumber: 'N/A',
+        lastFour: 'N/A',
         balance: 0,
         currency: 'INR',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        accountHolder: 'Soumya Ranjan'
       } as Account;
 
       AccountStatementBuilder.generate(account, "FinEdge Customer", txs, "Complete History");

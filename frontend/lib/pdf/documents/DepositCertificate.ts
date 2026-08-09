@@ -20,7 +20,7 @@ export const DepositCertificateBuilder = {
     const customerInfo: CustomerInfo = {
       name: customerName,
       accountNumber: linkedAccountNumber,
-      accountType: 'Fixed Deposit',
+      accountType: deposit.type === 'RD' ? 'Recurring Deposit' : 'Fixed Deposit',
       status: deposit.status || 'Active'
     };
     template.addCustomerInfo(customerInfo);
@@ -32,7 +32,7 @@ export const DepositCertificateBuilder = {
       { label: 'Deposit Reference Number', value: deposit.id },
       { label: 'Principal Amount', value: PdfUtils.formatCurrency(deposit.principalAmount) },
       { label: 'Interest Rate', value: `${deposit.interestRate}% p.a.` },
-      { label: 'Tenure', value: `${deposit.tenureMonths} Months` },
+      { label: 'Deposit Type', value: deposit.type === 'RD' ? 'Recurring Deposit' : 'Fixed Deposit' },
       { label: 'Start Date', value: PdfUtils.formatDate(deposit.startDate) },
       { label: 'Maturity Date', value: PdfUtils.formatDate(deposit.maturityDate) },
       { label: 'Maturity Amount (Estimated)', value: PdfUtils.formatCurrency(deposit.maturityAmount) },

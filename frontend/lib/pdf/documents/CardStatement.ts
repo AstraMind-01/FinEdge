@@ -32,7 +32,7 @@ export const CardStatementBuilder = {
     template.addKeyValuePairs([
       { label: 'Card Number', value: card.maskedNumber },
       { label: 'Network', value: card.network },
-      { label: 'Cardholder Name', value: card.cardholderName },
+      { label: 'Cardholder Name', value: card.cardholderName || card.cardHolderName || customerName },
       { label: 'Status', value: card.status || 'ACTIVE', status: card.status || 'ACTIVE' }
     ]);
 
@@ -40,9 +40,9 @@ export const CardStatementBuilder = {
     template.addSectionTitle('STATEMENT SUMMARY');
     if (card.type === 'CREDIT') {
       template.addKeyValuePairs([
-        { label: 'Outstanding Balance', value: PdfUtils.formatCurrency(card.outstandingBalance) },
-        { label: 'Available Credit', value: PdfUtils.formatCurrency(card.availableCredit) },
-        { label: 'Total Credit Limit', value: PdfUtils.formatCurrency(card.creditLimit) },
+        { label: 'Outstanding Balance', value: PdfUtils.formatCurrency(card.spentThisMonth || 0) },
+        { label: 'Available Credit', value: PdfUtils.formatCurrency(card.availableCredit || 0) },
+        { label: 'Total Credit Limit', value: PdfUtils.formatCurrency(card.creditLimit || 0) },
         { label: 'Statement Period', value: 'Current Month' }
       ]);
     } else {
@@ -76,7 +76,9 @@ export const CardStatementBuilder = {
     // Add Security Notice
     template.addSecurityNotice(true);
 
+    const last4 = card.cardNumber ? card.cardNumber.slice(-4) : (card.maskedNumber ? card.maskedNumber.slice(-4) : '4412');
+
     // Save
-    template.save(`FinEdge_Card_Statement_${card.lastFour}.pdf`);
+    template.save(`FinEdge_Card_Statement_${last4}.pdf`);
   }
 };

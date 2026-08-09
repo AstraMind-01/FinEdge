@@ -27,8 +27,8 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-surface-container border border-outline-variant/20 w-full max-w-2xl rounded-2xl p-6 shadow-2xl flex flex-col gap-6 text-on-surface">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 overflow-y-auto py-6 animate-in fade-in duration-200">
+      <div className="bg-surface-container border border-outline-variant/20 w-full max-w-2xl rounded-2xl p-6 shadow-2xl z-[10000] my-auto flex flex-col gap-6 text-on-surface">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-outline-variant/20 pb-4">
           <div className="flex items-center gap-3">
