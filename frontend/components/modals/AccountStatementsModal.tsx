@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Account, Transaction } from "../../types";
 import { X, Globe, Download, FileText, Calendar, Printer, CheckCircle2 } from "lucide-react";
 
-import { generatePdfBlob } from "../../lib/pdfGenerator";
+import { AccountStatementBuilder } from "../../lib/pdf/documents/AccountStatement";
 
 interface AccountStatementsModalProps {
   account: Account | null;
@@ -32,24 +32,27 @@ export default function AccountStatementsModal({ account, transactions, isOpen, 
         ).join("\n");
         blob = new Blob([headers + rows], { type: "text/csv" });
       } else {
-        const lines = [
-          `ACCOUNT STATEMENT - ${account.name.toUpperCase()}`,
-          `Account Number: ${account.accountNumber || account.maskedNumber} | IFSC: ${account.ifsc || 'HDFC0001234'}`,
-          `Statement Period: ${period === 'all' ? 'All Time' : `Last ${period} Days`} | Date: 09 Aug 2026`,
-          `---------------------------------------------------------------------------------------------------`,
-          ...transactions.map(t => `${t.date}  |  ${t.id.padEnd(8)}  |  ${t.merchantName.padEnd(20)}  |  ${t.type.padEnd(6)}  |  INR ${Math.abs(t.amount).toFixed(2)}`)
-        ];
-        blob = generatePdfBlob(`FINEDGE BANK - OFFICIAL ACCOUNT STATEMENT`, lines);
+        // We try to get the account holder name
+        const customerName = account && 'accountHolder' in account && typeof (account as any).accountHolder === 'string' 
+          ? (account as any).accountHolder 
+          : 'FinEdge Customer';
+
+        const periodStr = period === 'all' ? 'All Time' : `Last ${period} Days`;
+        
+        AccountStatementBuilder.generate(account, customerName, transactions, periodStr);
+        blob = new Blob(); // Dummy blob to not break the rest of the flow for CSV
       }
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `FinEdge_Statement_${account.name.replace(/\s+/g, '_')}_${period}days.${fileFormat}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (fileFormat === "csv") {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `FinEdge_Statement_${account.name.replace(/\s+/g, '_')}_${period}days.${fileFormat}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
 
       setIsGenerating(false);
       setDownloadSuccess(true);

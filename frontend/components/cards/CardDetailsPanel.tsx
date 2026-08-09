@@ -7,7 +7,7 @@ import {
   Eye, EyeOff, Snowflake, KeyRound, FileText, AlertOctagon, 
   RefreshCcw, ShieldCheck, X, CheckCircle2, AlertTriangle, Lock
 } from 'lucide-react';
-import { generatePdfBlob } from '../../lib/pdfGenerator';
+import { CardStatementBuilder } from '../../lib/pdf/documents/CardStatement';
 
 interface CardDetailsPanelProps {
   card: BankCard;
@@ -70,32 +70,23 @@ export default function CardDetailsPanel({ card, onStatusToggle }: CardDetailsPa
     }, 1500);
   };
 
+  const accountContextFallback = 'Linked Savings Account';
+
   const handleDownloadStatement = async () => {
     setIsGeneratingPdf(true);
-    const cardName = card.name || "FinEdge Card";
-    const lines = [
-      `Cardholder: ${card.cardholderName || card.cardHolderName}`,
-      `Card Number: ${card.maskedNumber}`,
-      `Card Type: ${card.type} (${card.variant})`,
-      `Date Range: Jul 2026 - Aug 2026`,
-      `Available Credit / Balance: Rs.${(card.availableCredit || 425000).toLocaleString('en-IN')}`,
-      `---------------------------------------------------------------------------------------------------`,
-      `05 Aug 2026 | Amazon.in Online Purchase | DEBIT  | - Rs.4,599.00`,
-      `02 Aug 2026 | Zomato Fine Dining        | DEBIT  | - Rs.850.50`,
-      `28 Jul 2026 | Cash Credit Reward        | CREDIT | + Rs.1,500.00`
+    const cardName = card.cardholderName || (card as any).cardHolderName || "FinEdge Customer";
+    
+    // Mock transactions for the demo PDF
+    const mockTxs: any[] = [
+      { timestamp: '2026-08-05T10:00:00Z', merchantName: 'Amazon.in Online Purchase', amount: 4599.00, type: 'DEBIT', status: 'COMPLETED' },
+      { timestamp: '2026-08-02T14:30:00Z', merchantName: 'Zomato Fine Dining', amount: 850.50, type: 'DEBIT', status: 'COMPLETED' },
+      { timestamp: '2026-07-28T09:15:00Z', merchantName: 'Cash Credit Reward', amount: 1500.00, type: 'CREDIT', status: 'COMPLETED' }
     ];
 
-    const pdfBlob = generatePdfBlob(`FinEdge ${card.type} Card Statement`, lines);
-
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${cardName.replace(/\s+/g, '_')}_Statement.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setIsGeneratingPdf(false);
+    setTimeout(() => {
+      CardStatementBuilder.generate(card, cardName, accountContextFallback, mockTxs);
+      setIsGeneratingPdf(false);
+    }, 800);
   };
 
   const handleConfirmReplace = () => {

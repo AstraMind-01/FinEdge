@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 
 export default function CardsHeader() {
   return (
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 mt-4">
       <div>
         <h1 className="text-3xl font-bold text-on-surface mb-2 tracking-tight">My Cards</h1>
         <p className="text-on-surface-variant text-[15px]">Manage your debit and credit cards in one place</p>

@@ -4,7 +4,7 @@ import React from "react";
 import { Account } from "../../types";
 import { X, Coins, Download, ShieldCheck, FileCheck, CheckCircle2 } from "lucide-react";
 
-import { generatePdfBlob } from "../../lib/pdfGenerator";
+import { InterestCertificateBuilder } from "../../lib/pdf/documents/InterestCertificate";
 
 interface Props {
   accounts: Account[];
@@ -22,30 +22,12 @@ export default function InterestCertificateModal({ accounts, isOpen, onClose }: 
   };
 
   const handleDownloadCert = () => {
-    const lines = [
-      `OFFICIAL INTEREST CERTIFICATE FOR FINANCIAL YEAR 2025-2026`,
-      `---------------------------------------------------------------------------------------------------`,
-      `Customer Name    : Soumya Ranjan`,
-      `PAN Card Number  : ABCDE1234F`,
-      `Issue Date       : 09 Aug 2026`,
-      `---------------------------------------------------------------------------------------------------`,
-      `INTEREST EARNED BREAKDOWN BY ACCOUNT:`,
-      ...accounts.map(a => `- ${a.name.padEnd(28)} (${a.maskedNumber}) : INR ${(a.interestEarned || 7300).toFixed(2)}`),
-      `---------------------------------------------------------------------------------------------------`,
-      `TOTAL INTEREST ACCRUED : INR ${totalInterest.toFixed(2)}`,
-      `TDS DEDUCTED (Form 16A): INR 0.00`,
-      `---------------------------------------------------------------------------------------------------`,
-      `This document is cryptographically signed and valid for Income Tax Return (ITR) filings.`
-    ];
-    const blob = generatePdfBlob(`FINEDGE BANK - FORM 16A INTEREST CERTIFICATE`, lines);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `FinEdge_Interest_Certificate_FY25-26.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // We try to get the customer name from the first account if available
+    const customerName = accounts.length > 0 && 'accountHolder' in accounts[0] && typeof (accounts[0] as any).accountHolder === 'string'
+      ? (accounts[0] as any).accountHolder
+      : 'FinEdge Customer';
+
+    InterestCertificateBuilder.generate(accounts, customerName, '2025-2026');
   };
 
   return (

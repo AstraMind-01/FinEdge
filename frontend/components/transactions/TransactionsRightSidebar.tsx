@@ -9,7 +9,7 @@ import { MockApi } from '../../lib/mockApi';
 import { useAccounts } from '../../context/AccountContext';
 import PayBillsModal from '../modals/PayBillsModal';
 import MerchantDetailModal from '../modals/MerchantDetailModal';
-import { generatePdfBlob } from '../../lib/pdfGenerator';
+import { AccountStatementBuilder } from '../../lib/pdf/documents/AccountStatement';
 
 interface MerchantSummary {
   name: string;
@@ -79,21 +79,20 @@ export default function TransactionsRightSidebar({ onFilterByMerchant }: Transac
     setDownloadingFormat("pdf");
     setTimeout(async () => {
       const txs = await MockApi.getTransactions("ALL");
-      const lines = [
-        `COMPLETE TRANSACTION AUDIT STATEMENT`,
-        `Account Holder: Soumya Ranjan | Generated: 09 Aug 2026`,
-        `---------------------------------------------------------------------------------------------------`,
-        ...txs.map(t => `${t.date}  |  ${t.id.padEnd(8)}  |  ${t.merchantName.padEnd(20)}  |  ${t.type.padEnd(6)}  |  INR ${Math.abs(t.amount).toFixed(2)}`)
-      ];
-      const blob = generatePdfBlob("FINEDGE BANK - TRANSACTION HISTORY REPORT", lines);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `FinEdge_Transaction_Report_${Date.now()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Get the default account for the statement or mock one if undefined
+      const account = accounts.length > 0 ? accounts[0] : {
+        id: 'ALL',
+        type: 'Savings',
+        name: 'All Accounts',
+        accountNumber: 'N/A',
+        maskedNumber: 'N/A',
+        balance: 0,
+        currency: 'INR',
+        status: 'ACTIVE'
+      } as Account;
+
+      AccountStatementBuilder.generate(account, "FinEdge Customer", txs, "Complete History");
 
       setDownloadingFormat(null);
       setDownloadSuccess("PDF Statement downloaded successfully!");

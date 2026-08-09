@@ -4,7 +4,7 @@ import React from "react";
 import { Transaction, Account } from "../../types";
 import { X, CheckCircle2, ArrowUpRight, ArrowDownLeft, Download, ShieldCheck, Landmark } from "lucide-react";
 
-import { generatePdfBlob } from "../../lib/pdfGenerator";
+import { TransactionReceiptBuilder } from "../../lib/pdf/documents/TransactionReceipt";
 
 interface TransactionDetailModalProps {
   transaction: Transaction | null;
@@ -23,29 +23,16 @@ export default function TransactionDetailModal({ transaction, account, isOpen, o
   };
 
   const handleDownloadReceipt = () => {
-    const lines = [
-      `OFFICIAL PAYMENT & TRANSACTION RECEIPT`,
-      `---------------------------------------------------------------------------------------------------`,
-      `Transaction Reference : ${transaction.id}`,
-      `Date & Timestamp     : ${transaction.date}`,
-      `Associated Account   : ${account?.name || 'Primary Savings Account'} (${account?.maskedNumber || '•••• 8812'})`,
-      `Merchant / Payee     : ${transaction.merchantName}`,
-      `Category             : ${transaction.category}`,
-      `Transaction Type     : ${transaction.type}`,
-      `Transaction Amount   : INR ${Math.abs(transaction.amount).toFixed(2)}`,
-      `Payment Status       : SUCCESS (Cryptographically Verified)`,
-      `---------------------------------------------------------------------------------------------------`,
-      `Thank you for banking with FinEdge Intelligent Platform.`
-    ];
-    const blob = generatePdfBlob(`FINEDGE BANK - PAYMENT RECEIPT`, lines);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `FinEdge_Receipt_${transaction.id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (!transaction) return;
+    
+    // We try to get the account holder name, fallback to a generic name
+    const customerName = account && 'accountHolder' in account && typeof (account as any).accountHolder === 'string' 
+      ? (account as any).accountHolder 
+      : 'FinEdge Customer';
+      
+    const accountNumber = account?.maskedNumber || account?.accountNumber || 'Unknown';
+    
+    TransactionReceiptBuilder.generate(transaction, customerName, accountNumber);
   };
 
   return (

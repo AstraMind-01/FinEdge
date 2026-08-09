@@ -3,6 +3,7 @@
 import React from "react";
 import { X, ShieldCheck, Download, Calendar, Landmark, CheckCircle2, UserCheck, FileText, ArrowRight } from "lucide-react";
 import { Deposit } from "../../types";
+import { DepositCertificateBuilder } from "../../lib/pdf/documents/DepositCertificate";
 
 interface DepositDetailsModalProps {
   isOpen: boolean;
@@ -18,31 +19,9 @@ export default function DepositDetailsModal({
   if (!isOpen || !deposit) return null;
 
   const handleDownloadPdf = () => {
-    const content = `====================================================\n` +
-      `           FINEDGE BANK - OFFICIAL DEPOSIT CERTIFICATE\n` +
-      `====================================================\n\n` +
-      `Certificate No  : ${deposit.id}-CERT-2026\n` +
-      `Deposit Holder  : Soumyajit Ranjan\n` +
-      `Deposit Type    : ${deposit.type === 'FD' ? 'Fixed Deposit' : 'Recurring Deposit'}\n` +
-      `Scheme Name     : ${deposit.name}\n` +
-      `Principal Amount: ₹${deposit.principalAmount.toLocaleString('en-IN')}\n` +
-      `Interest Rate   : ${deposit.interestRate}% p.a.\n` +
-      `Start Date      : ${deposit.startDate}\n` +
-      `Maturity Date   : ${deposit.maturityDate}\n` +
-      `Maturity Amount : ₹${deposit.maturityAmount.toLocaleString('en-IN')}\n` +
-      `Nominee         : Priya Ranjan (Registered)\n` +
-      `Status          : ACTIVE (DICGC Insured up to ₹5 Lakhs)\n\n` +
-      `====================================================\n` +
-      `Digitally signed by FinEdge Banking Authority\n` +
-      `====================================================`;
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${deposit.id}_Certificate.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Attempt to parse out linked account number, or just use a generic placeholder
+    // In a real app this would come from the user's accounts list
+    DepositCertificateBuilder.generate(deposit, "FinEdge Customer", "Primary Savings Account");
   };
 
   return (

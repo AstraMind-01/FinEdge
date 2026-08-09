@@ -82,7 +82,7 @@ export default function CardsPage() {
         <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
           <Header />
           
-          <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-[1400px] mx-auto w-full">
+          <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">
             <CardsHeader />
             
             {cards.length > 0 && selectedCard ? (
