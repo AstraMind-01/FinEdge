@@ -49,9 +49,72 @@ public class NotificationService {
                         n.getType(),
                         n.getTransactionRef(),
                         n.getCreatedAt(),
-                        n.isRead()
+                        n.isRead(),
+                        n.getTitle(),
+                        n.getCategory(),
+                        n.getPriority(),
+                        n.getActionLink(),
+                        n.getActionLabel(),
+                        n.getSourceEvent()
                 ))
                 .toList();
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void markAsRead(Long id) {
+        notificationRepository.findById(id).ifPresent(n -> {
+            n.setRead(true);
+            notificationRepository.save(n);
+        });
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void markAllAsRead(String username) {
+        notificationRepository.markAllAsReadByUsername(username);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteNotification(Long id) {
+        notificationRepository.deleteById(id);
+    }
+
+    public long getUnreadCount(String username) {
+        return notificationRepository.countByRecipientUsernameAndReadFalse(username);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public NotificationResponse createNotification(com.onlinebanking.notification.dto.NotificationRequest request) {
+        Notification notification = Notification.builder()
+                .recipientUsername(request.recipientUsername())
+                .message(request.message())
+                .type(request.type())
+                .transactionRef(request.transactionRef())
+                .title(request.title())
+                .category(request.category())
+                .priority(request.priority())
+                .actionLink(request.actionLink())
+                .actionLabel(request.actionLabel())
+                .sourceEvent(request.sourceEvent())
+                .metadata(request.metadata())
+                .read(false)
+                .build();
+        
+        Notification saved = notificationRepository.save(notification);
+        return new NotificationResponse(
+                saved.getId(),
+                saved.getRecipientUsername(),
+                saved.getMessage(),
+                saved.getType(),
+                saved.getTransactionRef(),
+                saved.getCreatedAt(),
+                saved.isRead(),
+                saved.getTitle(),
+                saved.getCategory(),
+                saved.getPriority(),
+                saved.getActionLink(),
+                saved.getActionLabel(),
+                saved.getSourceEvent()
+        );
     }
 
     private String buildNotificationMessage(TransactionEvent event) {

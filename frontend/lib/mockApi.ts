@@ -460,6 +460,16 @@ export const MockApi = {
     await delay(300);
     return [...cards];
   },
+  addCard: async (newCard: BankCard): Promise<BankCard[]> => {
+    await delay(300);
+    cards.unshift(newCard);
+    return [...cards];
+  },
+  updateCardStatus: async (cardId: string, status: "ACTIVE" | "FROZEN" | "BLOCKED"): Promise<BankCard[]> => {
+    await delay(200);
+    cards = cards.map(c => c.id === cardId ? { ...c, status } : c);
+    return [...cards];
+  },
   getCardOffers: async (): Promise<CardOffer[]> => {
     await delay(200);
     return [...cardOffers];

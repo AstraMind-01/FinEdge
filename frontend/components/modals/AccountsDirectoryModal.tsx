@@ -4,6 +4,8 @@ import React from "react";
 import { Account } from "../../types";
 import { X, Landmark, Briefcase, Lock, PiggyBank, Copy, Check } from "lucide-react";
 
+import { useAccounts } from "../../context/AccountContext";
+
 interface Props {
   accounts: Account[];
   isOpen: boolean;
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export default function AccountsDirectoryModal({ accounts, isOpen, onClose, onSelectAccount }: Props) {
+  const { isAccountVerified } = useAccounts();
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -79,7 +82,7 @@ export default function AccountsDirectoryModal({ accounts, isOpen, onClose, onSe
 
               <div className="flex flex-col items-end gap-1.5">
                 <span className="font-mono text-sm font-bold text-on-surface">
-                  {formatCurrency(acc.balance)}
+                  {isAccountVerified(acc.id) ? formatCurrency(acc.balance) : "••••••••"}
                 </span>
                 <button
                   onClick={(e) => handleCopy(acc.accountNumber || acc.lastFour, acc.id, e)}

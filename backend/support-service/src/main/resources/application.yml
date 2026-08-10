@@ -1,0 +1,30 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: support-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:support_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+app:
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    account-url: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+    transaction-url: ${TRANSACTION_SERVICE_URL:http://localhost:8083}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+    audit-url: ${AUDIT_SERVICE_URL:http://localhost:8085}
+
+logging:
+  level:
+    com.onlinebanking.support: INFO

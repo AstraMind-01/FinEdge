@@ -21,7 +21,7 @@ export default function SendMoneyModal({
   initialAmount = 5000,
   onSuccess
 }: SendMoneyModalProps) {
-  const { accounts, selectedAccountId, executeTransfer } = useAccounts();
+  const { accounts, selectedAccountId, executeTransfer, isAccountVerified } = useAccounts();
 
   const [fromAccountId, setFromAccountId] = useState(selectedAccountId || accounts[0]?.id || "");
   const [amount, setAmount] = useState(initialAmount.toString());
@@ -169,7 +169,7 @@ export default function SendMoneyModal({
             >
               {accounts.map(acc => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.name} ({acc.maskedNumber}) — ₹{acc.balance.toLocaleString("en-IN")} Available
+                  {acc.name} ({acc.maskedNumber}) {isAccountVerified(acc.id) ? `— ₹${acc.balance.toLocaleString("en-IN")} Available` : ''}
                 </option>
               ))}
             </select>

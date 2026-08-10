@@ -3,6 +3,7 @@ import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { IndianRupee } from 'lucide-react';
 import { Account } from '../../../types';
+import { useAccounts } from '../../../context/AccountContext';
 
 interface Step2AmountProps {
   amount: string;
@@ -17,9 +18,10 @@ interface Step2AmountProps {
 export default function Step2Amount({
   amount, setAmount, transferMode, setTransferMode, fromAccount, onNext, onBack
 }: Step2AmountProps) {
+  const { isAccountVerified } = useAccounts();
+  const isComplete = parseFloat(amount) > 0 && parseFloat(amount) <= (fromAccount?.balance || Infinity);
+  const quickAmounts = [500, 1000, 5000, 10000, 25000];
 
-  const quickAmounts = [1000, 5000, 10000, 25000];
-  
   const transferModes = [
     { id: "IMPS", label: "IMPS", time: "Instant", fee: 5 },
     { id: "NEFT", label: "NEFT", time: "2-4 hours", fee: 0 },
@@ -30,34 +32,35 @@ export default function Step2Amount({
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val);
   };
 
-  const isComplete = parseFloat(amount) > 0 && parseFloat(amount) <= (fromAccount?.balance || Infinity);
-
   return (
-    <Card className="w-full flex flex-col border border-outline-variant/10 bg-surface-container shadow-sm overflow-hidden">
-      
-      <div className="p-8 flex flex-col items-center gap-10 min-h-[400px]">
-        
-        {/* Large Amount Input */}
-        <div className="flex flex-col items-center w-full max-w-md mt-4">
-          <label className="text-[14px] font-semibold text-on-surface-variant uppercase tracking-wider mb-4">Enter Amount</label>
-          <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-              <IndianRupee size={32} className="text-on-surface-variant" />
-            </div>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full h-[80px] bg-surface pl-16 pr-6 rounded-2xl border border-outline-variant/20 font-display-lg text-[40px] font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-center"
-              placeholder="0"
-            />
+    <Card className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 shadow-xl flex flex-col gap-6">
+      <div>
+        <h2 className="text-xl font-bold text-on-surface font-headline-md tracking-tight">Enter Transfer Amount &amp; Mode</h2>
+        <p className="text-xs text-on-surface-variant mt-1">Specify how much to send and choose your payment processing engine.</p>
+      </div>
+
+      <div className="flex flex-col items-center justify-center py-4 bg-surface-container-high border border-outline-variant/10 rounded-2xl p-6">
+        <span className="text-[12px] font-medium text-on-surface-variant uppercase tracking-wider mb-3">Transfer Amount</span>
+        <div className="relative w-full max-w-sm">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <IndianRupee size={32} className="text-on-surface-variant" />
           </div>
-          {fromAccount && (
-            <div className="mt-3 flex items-center gap-2 text-[13px]">
-              <span className="text-on-surface-variant">Available Balance:</span>
-              <span className="font-semibold text-tertiary">{formatCurrency(fromAccount.balance)}</span>
-            </div>
-          )}
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full h-[80px] bg-surface pl-16 pr-6 rounded-2xl border border-outline-variant/20 font-display-lg text-[40px] font-bold text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all text-center"
+            placeholder="0"
+          />
+        </div>
+        {fromAccount && (
+          <div className="mt-3 flex items-center gap-2 text-[13px]">
+            <span className="text-on-surface-variant">Available Balance:</span>
+            <span className="font-semibold text-tertiary">
+              {isAccountVerified(fromAccount.id) ? formatCurrency(fromAccount.balance) : "••••••••"}
+            </span>
+          </div>
+        )}
           
           <div className="flex flex-wrap justify-center items-center gap-2 mt-6">
             {quickAmounts.map(amt => (
@@ -113,8 +116,6 @@ export default function Step2Amount({
             placeholder="e.g., Rent, Dinner, Gift"
           />
         </div>
-
-      </div>
 
       {/* Footer Navigation */}
       <div className="p-6 bg-surface-container-low border-t border-outline-variant/10 flex items-center justify-between">

@@ -5,6 +5,7 @@ import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Account, Beneficiary } from '../../../types';
 import { ArrowLeftRight, Landmark, Briefcase, Search, Plus, CheckCircle2, User, Smartphone, AlertCircle, Loader2 } from 'lucide-react';
+import { useAccounts } from '../../../context/AccountContext';
 
 interface Step1RecipientProps {
   accounts: Account[];
@@ -20,6 +21,7 @@ interface Step1RecipientProps {
 export default function Step1Recipient({
   accounts, beneficiaries, fromAccount, toRecipient, onFromAccountSelect, onToRecipientSelect, onNext, onCancel
 }: Step1RecipientProps) {
+  const { isAccountVerified } = useAccounts();
   const [activeTab, setActiveTab] = useState("Own Accounts");
   const tabs = ["Own Accounts", "Saved Beneficiary", "New Recipient", "UPI ID / Mobile"];
 
@@ -147,7 +149,7 @@ export default function Step1Recipient({
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[11px] text-on-surface-variant">Available Balance</span>
-                    <span className="font-bold text-[14px] text-tertiary font-mono">{formatCurrency(acc.balance)}</span>
+                    <span className="font-bold text-[14px] text-tertiary font-mono">{isAccountVerified(acc.id) ? formatCurrency(acc.balance) : "••••••••"}</span>
                   </div>
                 </div>
               );
@@ -193,7 +195,7 @@ export default function Step1Recipient({
                     <span className="text-[12px] text-on-surface-variant font-mono">{acc.maskedNumber}</span>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-[11px] text-on-surface-variant">Available Balance</span>
-                      <span className="font-bold text-[14px] text-on-surface font-mono">{formatCurrency(acc.balance)}</span>
+                      <span className="font-bold text-[14px] text-on-surface font-mono">{isAccountVerified(acc.id) ? formatCurrency(acc.balance) : "••••••••"}</span>
                     </div>
                   </div>
                 );

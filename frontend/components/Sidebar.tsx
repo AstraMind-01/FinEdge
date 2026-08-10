@@ -14,7 +14,7 @@ import SupportChatModal from './modals/SupportChatModal';
 export default function Sidebar() {
   const pathname = usePathname();
   const isTransfersRoute = pathname.startsWith('/transfers');
-  const [isTransfersExpanded, setIsTransfersExpanded] = useState<boolean>(true);
+  const [isTransfersExpanded, setIsTransfersExpanded] = useState<boolean>(false);
   const [isSupportOpen, setIsSupportOpen] = useState<boolean>(false);
 
   const isMainActive = (path: string) => {
@@ -115,11 +115,6 @@ export default function Sidebar() {
 
           <div className="h-px bg-outline-variant/30 my-4 mx-4"></div>
 
-          <Link aria-current={pathname === "/kyc-profile" ? "page" : undefined} className={getLinkClasses(pathname === "/kyc-profile")} href="/kyc-profile">
-            <UserCheck className="mr-3 shrink-0" size={18} />
-            <span className="text-[13px] truncate">KYC &amp; Profile</span>
-          </Link>
-
           <Link aria-current={pathname === "/beneficiaries" ? "page" : undefined} className={getLinkClasses(pathname === "/beneficiaries")} href="/beneficiaries">
             <Users className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Beneficiaries</span>
@@ -130,19 +125,9 @@ export default function Sidebar() {
             <span className="text-[13px] truncate">Disputes</span>
           </Link>
 
-          <Link className={getLinkClasses(false)} href="/transactions">
-            <Bell className="mr-3 shrink-0" size={18} />
-            <span className="text-[13px] truncate">Notifications</span>
-          </Link>
-
-          <Link className={getLinkClasses(false)} href="/transactions">
+          <Link aria-current={pathname === "/reports" ? "page" : undefined} className={getLinkClasses(pathname === "/reports")} href="/reports">
             <BarChart3 className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Reports &amp; Analytics</span>
-          </Link>
-
-          <Link className={getLinkClasses(false)} href="/accounts">
-            <ShieldCheck className="mr-3 shrink-0" size={18} />
-            <span className="text-[13px] truncate">Admin Panel</span>
           </Link>
         </nav>
 

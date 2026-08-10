@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Account } from "../../types";
 import { X, ArrowLeftRight, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { useAccounts } from "../../context/AccountContext";
 
 interface QuickTransferModalProps {
   fromAccount: Account | null;
@@ -13,6 +14,7 @@ interface QuickTransferModalProps {
 }
 
 export default function QuickTransferModal({ fromAccount, accounts, isOpen, onClose, onTransfer }: QuickTransferModalProps) {
+  const { isAccountVerified } = useAccounts();
   const [toAccountId, setToAccountId] = useState<string>("");
   const [externalAccountNum, setExternalAccountNum] = useState<string>("");
   const [isExternal, setIsExternal] = useState(false);
@@ -124,7 +126,9 @@ export default function QuickTransferModal({ fromAccount, accounts, isOpen, onCl
           </div>
           <div className="text-right">
             <span className="text-xs text-on-surface-variant uppercase font-medium">Available</span>
-            <p className="font-bold text-primary text-sm mt-0.5">{formatCurrency(fromAccount.balance)}</p>
+            <p className="font-bold text-primary text-sm mt-0.5">
+              {isAccountVerified(fromAccount.id) ? formatCurrency(fromAccount.balance) : "••••••••"}
+            </p>
           </div>
         </div>
 
@@ -160,7 +164,7 @@ export default function QuickTransferModal({ fromAccount, accounts, isOpen, onCl
                 <option value="" className="bg-[#191f2f] text-[#dde2f8]">-- Choose Account --</option>
                 {availableDestAccounts.map(acc => (
                   <option key={acc.id} value={acc.id} className="bg-[#191f2f] text-[#dde2f8]">
-                    {acc.name} ({acc.maskedNumber}) - {formatCurrency(acc.balance)}
+                    {acc.name} ({acc.maskedNumber}) {isAccountVerified(acc.id) ? `- ${formatCurrency(acc.balance)}` : ''}
                   </option>
                 ))}
               </select>

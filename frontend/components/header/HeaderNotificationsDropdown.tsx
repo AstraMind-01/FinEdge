@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Bell, ArrowRightLeft, ShieldAlert, Sparkles, Check, CreditCard } from "lucide-react";
 import { useAccounts } from "../../context/AccountContext";
 
@@ -79,7 +80,10 @@ export default function HeaderNotificationsDropdown({ isOpen, onClose }: Props) 
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end pt-2 border-t border-outline-variant/20 text-[11px]">
+      <div className="flex justify-between items-center pt-2 border-t border-outline-variant/20 text-[11px]">
+        <Link href="/notifications" onClick={onClose} className="text-primary hover:text-primary-fixed font-medium cursor-pointer">
+          View All Notifications
+        </Link>
         <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface font-medium cursor-pointer">Close</button>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { BankCard, CardControls } from '../../types';
-import { Globe, ShoppingBag, Wifi, CreditCard as CreditCardIcon, Landmark, CheckCircle2, ShieldAlert, Sparkles } from 'lucide-react';
+import { Globe, ShoppingBag, Wifi, CreditCard as CreditCardIcon, Landmark, CheckCircle2, ShieldAlert, Sparkles, Lock, KeyRound, X, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 
 interface CardControlsTabsProps {
   card: BankCard;
@@ -14,6 +14,12 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
   const [controls, setControls] = useState<CardControls>(card.controls);
   const [hasChanges, setHasChanges] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+
+  // Security PIN Verification Modal State
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
+  const [securityPin, setSecurityPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Sync state if card changes
   React.useEffect(() => {
@@ -31,13 +37,37 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    onUpdateControls(controls);
-    setHasChanges(false);
-    setSaveToast(true);
+  const handleOpenSecurityModal = () => {
+    setPinError(null);
+    setSecurityPin("");
+    setSecurityModalOpen(true);
+  };
+
+  const handleVerifyAndSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (securityPin.length < 4) {
+      setPinError("Please enter your valid 4-digit Security PIN.");
+      return;
+    }
+
+    if (securityPin !== "1234") {
+      setPinError("Invalid Security PIN. Demo PIN is 1234.");
+      return;
+    }
+
+    setIsVerifying(true);
+    setPinError(null);
+
     setTimeout(() => {
-      setSaveToast(false);
-    }, 3000);
+      setIsVerifying(false);
+      setSecurityModalOpen(false);
+      onUpdateControls(controls);
+      setHasChanges(false);
+      setSaveToast(true);
+      setTimeout(() => {
+        setSaveToast(false);
+      }, 3500);
+    }, 600);
   };
 
   const tabs = [
@@ -52,9 +82,9 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
       
       {/* Success Toast */}
       {saveToast && (
-        <div className="absolute top-3 right-4 z-30 bg-tertiary-container border border-tertiary/30 text-on-tertiary-container text-xs font-semibold px-4 py-2 rounded-xl shadow-xl flex items-center gap-2 animate-bounce">
-          <CheckCircle2 size={16} className="text-tertiary" />
-          <span>Card controls &amp; limits saved successfully!</span>
+        <div className="absolute top-3 right-4 z-30 bg-tertiary/10 border border-tertiary/30 text-tertiary text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-bounce">
+          <CheckCircle2 size={16} />
+          <span>Security verified &amp; card controls updated successfully!</span>
         </div>
       )}
 
@@ -65,7 +95,7 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-4 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all relative ${
+            className={`px-6 py-4 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all relative cursor-pointer ${
               activeTab === tab.id ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
@@ -81,6 +111,15 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
       <div className="p-6">
         {activeTab === 'controls' && (
           <div className="space-y-8 animate-fade-in">
+            
+            {/* Security Notice Banner */}
+            <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-xl flex items-center gap-3 text-xs text-on-surface">
+              <ShieldCheck size={18} className="text-primary shrink-0" />
+              <div>
+                <span className="font-bold text-primary">2FA Protected Card Settings:</span> Any change to card transaction channels or daily spending limits requires 4-Digit Security PIN authorization.
+              </div>
+            </div>
+
             {/* Toggles List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ToggleItem 
@@ -149,14 +188,17 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
             </div>
 
             {/* Save Button */}
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+              <span className="text-xs text-on-surface-variant flex items-center gap-1.5">
+                <Lock size={14} className="text-tertiary" /> Encrypted setting changes require 4-digit PIN
+              </span>
               <button 
                 type="button"
-                onClick={handleSave}
+                onClick={handleOpenSecurityModal}
                 disabled={!hasChanges}
-                className="bg-primary text-on-primary px-8 py-3 rounded-xl text-xs font-bold hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                className="bg-primary text-on-primary px-8 py-3 rounded-xl text-xs font-bold hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer flex items-center gap-2"
               >
-                Save Changes
+                <KeyRound size={16} /> Authorize &amp; Save Settings
               </button>
             </div>
           </div>
@@ -202,7 +244,7 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
                 <h3 className="text-2xl font-bold text-primary">{card.rewardPoints || card.rewardsPoints || 8500} Points</h3>
                 <p className="text-xs text-on-surface-variant mt-1">Equivalent to ₹{(card.rewardPoints || 8500) * 0.25} cash credit</p>
               </div>
-              <button className="px-5 py-2.5 bg-primary text-on-primary font-bold text-xs rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)]">
+              <button className="px-5 py-2.5 bg-primary text-on-primary font-bold text-xs rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] cursor-pointer">
                 Redeem Points
               </button>
             </div>
@@ -217,6 +259,99 @@ export default function CardControlsTabs({ card, onUpdateControls }: CardControl
           </div>
         )}
       </div>
+
+      {/* Security PIN Authorization Modal */}
+      {securityModalOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-6">
+          <div className="bg-surface-container border border-outline-variant/20 rounded-2xl w-full max-w-md p-6 shadow-2xl z-[100000] text-on-surface flex flex-col gap-4">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-outline-variant/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-primary/10 border border-primary/20 rounded-xl text-primary">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold m-0">Security PIN Authorization</h3>
+                  <p className="text-[11px] text-on-surface-variant m-0">Card Controls &amp; Limit Modification Barrier</p>
+                </div>
+              </div>
+              <button onClick={() => setSecurityModalOpen(false)} className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-high">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Target Card & Setting Summary */}
+            <div className="p-3.5 bg-surface-high/60 border border-outline-variant/10 rounded-xl flex flex-col gap-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Card:</span>
+                <span className="font-semibold text-on-surface">{card.name} ({card.maskedNumber})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Security Level:</span>
+                <span className="font-semibold text-tertiary flex items-center gap-1">
+                  <ShieldCheck size={13} /> 256-bit Encrypted Setting Update
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyAndSave} className="flex flex-col gap-4 items-center text-center">
+              <div className="flex flex-col gap-1">
+                <label className="font-bold text-on-surface text-sm">Enter 4-Digit Security PIN</label>
+                <p className="text-[11px] text-on-surface-variant">
+                  Confirm your 4-digit Security PIN to save these setting changes.
+                </p>
+              </div>
+
+              <input
+                type="password"
+                maxLength={4}
+                value={securityPin}
+                onChange={(e) => {
+                  setSecurityPin(e.target.value.replace(/\D/g, ''));
+                  if (pinError) setPinError(null);
+                }}
+                placeholder="••••"
+                autoFocus
+                className="w-48 bg-surface-high border border-outline-variant/30 rounded-xl p-3.5 text-center text-2xl font-mono font-bold tracking-[0.4em] focus:outline-none focus:border-primary text-on-surface"
+              />
+
+              <span className="text-[11px] text-on-surface-variant">Demo Security PIN: <strong className="text-primary font-mono">1234</strong></span>
+
+              {pinError && (
+                <div className="w-full p-3 bg-error/10 border border-error/30 rounded-xl text-error text-xs flex items-center gap-2 text-left">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{pinError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full pt-2 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setSecurityModalOpen(false)}
+                  className="flex-1 py-2.5 bg-surface-high text-on-surface font-semibold rounded-xl text-xs hover:bg-surface-highest cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifying || securityPin.length < 4}
+                  className="flex-1 py-2.5 bg-primary text-on-primary font-bold rounded-xl text-xs hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] disabled:opacity-40 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Verifying...
+                    </>
+                  ) : (
+                    "Authorize & Save"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

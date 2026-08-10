@@ -11,19 +11,31 @@ interface CardsCarouselProps {
 export default function CardsCarousel({ cards, selectedCardId, onSelectCard }: CardsCarouselProps) {
   return (
     <div className="w-full mb-8 relative">
-      <div className="flex gap-6 overflow-x-auto pb-6 pt-4 px-2 hide-scrollbar snap-x perspective-[1000px]">
+      <div className="flex gap-6 overflow-x-auto pb-6 pt-6 px-6 hide-scrollbar snap-x perspective-[1000px]">
         {cards.map((card) => {
           const isVirtual = card.tier === 'Virtual' || card.name?.toLowerCase().includes('virtual');
           
           return (
-            <div key={card.id} className="snap-center relative transition-transform duration-300">
-              {card.isDefault && (
+            <div key={card.id} className="snap-center relative transition-transform duration-300 py-2 px-1">
+              {card.status === 'FROZEN' && (
+                <div className="absolute -top-3 right-4 z-50 bg-cyan-500 text-slate-950 text-[10px] font-extrabold px-3 py-1 rounded-full shadow-lg shadow-cyan-500/40 uppercase tracking-wide border border-cyan-300">
+                  FROZEN
+                </div>
+              )}
+
+              {card.status === 'BLOCKED' && (
+                <div className="absolute -top-3 right-4 z-50 bg-red-600 text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-lg shadow-red-600/40 uppercase tracking-wide border border-red-400">
+                  BLOCKED
+                </div>
+              )}
+
+              {card.isDefault && card.status === 'ACTIVE' && (
                 <div className="absolute -top-3 right-4 z-20 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-full shadow-lg shadow-primary/30 uppercase tracking-wide border border-primary/50">
                   Default
                 </div>
               )}
 
-              {isVirtual && !card.isDefault && (
+              {isVirtual && !card.isDefault && card.status === 'ACTIVE' && (
                 <div className="absolute -top-3 right-4 z-20 bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-3 py-1 rounded-full shadow-lg shadow-emerald-500/40 uppercase tracking-wide border border-emerald-400">
                   Virtual Card
                 </div>

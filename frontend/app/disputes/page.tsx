@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
+import SupportChatModal from '../../components/modals/SupportChatModal';
 import { Plus, Search, Filter, Calendar, Folder, Clock, CheckCircle, CurrencyIcon, AlertTriangle, ArrowRight, Gavel, Phone, HelpCircle, ChevronRight, RefreshCw, XCircle, Info, CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 
@@ -95,6 +96,9 @@ export default function DisputesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [selectedHelpQuestion, setSelectedHelpQuestion] = useState<string | undefined>(undefined);
+
   const handleRaiseDispute = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -161,7 +165,7 @@ export default function DisputesPage() {
   return (
     <div className="flex min-h-screen bg-background text-on-surface">
       <Sidebar />
-      <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
+      <div className="flex-1 lg:pl-[230px] w-full min-w-0 max-w-full flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden">
         <Header />
         
         <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">
@@ -422,7 +426,14 @@ export default function DisputesPage() {
                   Quick Help
                 </h4>
                 {faqs.map((faq, i) => (
-                  <div key={i} className={`flex flex-col cursor-pointer group ${i < faqs.length - 1 ? "border-b border-surface-container-high pb-4" : ""}`} onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}>
+                  <div 
+                    key={i} 
+                    className={`flex flex-col cursor-pointer group ${i < faqs.length - 1 ? "border-b border-surface-container-high pb-4" : ""}`} 
+                    onClick={() => {
+                      setSelectedHelpQuestion(faq.q);
+                      setIsSupportOpen(true);
+                    }}
+                  >
                     <div className="flex justify-between items-center text-sm text-on-surface font-medium group-hover:text-primary transition-colors">
                       <span>{faq.q}</span>
                       <ChevronRight size={16} className={`transition-transform ${expandedFaq === i ? "rotate-90 text-primary" : "group-hover:translate-x-0.5"}`} />
@@ -763,6 +774,13 @@ export default function DisputesPage() {
             </div>
           </div>
         )}
+
+        <SupportChatModal
+          isOpen={isSupportOpen}
+          onClose={() => setIsSupportOpen(false)}
+          initialQuestion={selectedHelpQuestion}
+          contextPage="Disputes & Claims Page"
+        />
       </div>
     </div>
   );

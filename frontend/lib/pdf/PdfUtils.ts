@@ -3,11 +3,11 @@ export const PdfUtils = {
    * Generates a standardized Document ID based on the type and current date.
    * Format: FE-{TYPE}-YYYYMMDD-{RANDOM_SUFFIX}
    */
-  generateDocumentId(type: 'DOC' | 'REC' | 'LOAN' | 'FD' | 'REF' | 'STMT' | 'CERT'): string {
+  generateDocumentId(type: string): string {
     const date = new Date();
     const dateString = date.toISOString().split('T')[0].replace(/-/g, '');
     const suffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `FE-${type}-${dateString}-${suffix}`;
+    return `FE-${type.toUpperCase()}-${dateString}-${suffix}`;
   },
 
   /**

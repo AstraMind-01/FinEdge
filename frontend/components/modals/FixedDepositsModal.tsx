@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Account } from "../../types";
 import { X, Landmark, CheckCircle2, AlertCircle, Loader2, TrendingUp } from "lucide-react";
+import { useAccounts } from "../../context/AccountContext";
 
 interface FixedDepositsModalProps {
   accounts: Account[];
@@ -18,6 +19,7 @@ const TENURES = [
 ];
 
 export default function FixedDepositsModal({ accounts, isOpen, onClose, onCreateFd }: FixedDepositsModalProps) {
+  const { isAccountVerified } = useAccounts();
   const activeAccounts = accounts.filter(a => a.type === "SAVINGS" || a.type === "CURRENT");
   const [sourceAccountId, setSourceAccountId] = useState(activeAccounts[0]?.id || "");
   const [depositAmount, setDepositAmount] = useState<string>("50000");
@@ -112,7 +114,7 @@ export default function FixedDepositsModal({ accounts, isOpen, onClose, onCreate
             >
               {activeAccounts.map(acc => (
                 <option key={acc.id} value={acc.id} className="bg-[#191f2f] text-[#dde2f8]">
-                  {acc.name} ({acc.maskedNumber}) - {formatCurrency(acc.balance)}
+                  {acc.name} ({acc.maskedNumber}) {isAccountVerified(acc.id) ? `- ${formatCurrency(acc.balance)}` : ''}
                 </option>
               ))}
             </select>

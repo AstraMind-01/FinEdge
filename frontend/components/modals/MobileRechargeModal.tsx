@@ -5,6 +5,8 @@ import { Account } from "../../types";
 import { X, Smartphone, CheckCircle2, AlertCircle, Loader2, Zap, Radio, Sparkles, Search, ArrowLeft } from "lucide-react";
 import { RechargePlan } from "../../app/api/recharge/plans/route";
 
+import { useAccounts } from "../../context/AccountContext";
+
 interface MobileRechargeModalProps {
   accounts: Account[];
   isOpen: boolean;
@@ -39,6 +41,7 @@ const INITIAL_FALLBACK_PLANS: RechargePlan[] = [
 ];
 
 export default function MobileRechargeModal({ accounts, isOpen, onClose, onRecharge }: MobileRechargeModalProps) {
+  const { isAccountVerified } = useAccounts();
   const activeAccounts = accounts.filter(a => a.type === "SAVINGS" || a.type === "CURRENT");
   const [mobileNumber, setMobileNumber] = useState("9876543210");
   const [operator, setOperator] = useState("Jio 5G Prepaid");
@@ -350,7 +353,7 @@ export default function MobileRechargeModal({ accounts, isOpen, onClose, onRecha
             >
               {activeAccounts.map(acc => (
                 <option key={acc.id} value={acc.id} className="bg-[#191f2f] text-[#dde2f8]">
-                  {acc.name} ({acc.maskedNumber}) - {formatCurrency(acc.balance)}
+                  {acc.name} ({acc.maskedNumber}) {isAccountVerified(acc.id) ? `- ${formatCurrency(acc.balance)}` : ''}
                 </option>
               ))}
             </select>

@@ -5,6 +5,8 @@ import {
   ShieldCheck, 
   Laptop, 
   Smartphone, 
+  Tablet,
+  Monitor,
   LogOut, 
   FolderOpen, 
   FileText, 
@@ -16,13 +18,16 @@ import {
   Lock,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Info,
+  History
 } from 'lucide-react';
 import SecurityToggleWarningModal from '../modals/SecurityToggleWarningModal';
 import RevokeDeviceWarningModal from '../modals/RevokeDeviceWarningModal';
 import SecureDocumentAccessModal from '../modals/SecureDocumentAccessModal';
 import KycDocumentViewerModal from '../modals/KycDocumentViewerModal';
 import UpdateKycDocumentModal from '../modals/UpdateKycDocumentModal';
+import DeviceDetailsModal, { LinkedDeviceData } from '../modals/DeviceDetailsModal';
 import { useAccounts } from '../../context/AccountContext';
 import { VaultDocument } from '../../types';
 
@@ -42,9 +47,103 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
     txnNotifications: true
   });
 
-  const [devices, setDevices] = useState([
-    { id: 1, name: 'MacBook Pro 16"', time: 'Active Now', isCurrent: true, icon: Laptop },
-    { id: 2, name: 'iPhone 15 Pro', time: '2 hours ago', isCurrent: false, icon: Smartphone }
+  const [showPreviousDevices, setShowPreviousDevices] = useState(false);
+  const [selectedDeviceModal, setSelectedDeviceModal] = useState<LinkedDeviceData | null>(null);
+
+  const [devices, setDevices] = useState<LinkedDeviceData[]>([
+    {
+      id: "dev-1",
+      name: 'MacBook Pro 16"',
+      type: "Laptop",
+      os: "macOS Sonoma 14.5",
+      browser: "Chrome 127.0",
+      ip: "192.168.1.104",
+      location: "New Delhi, India",
+      fingerprint: "FP-892A-4410-MBP",
+      firstLinked: "15 Jan 2024",
+      lastActive: "Active Now",
+      isCurrent: true,
+      status: "ACTIVE",
+      activities: [
+        { id: "act-1", action: "2FA Security PIN Verification", timestamp: "2026-08-10 17:48", ip: "192.168.1.104", details: "Authenticated for High Yield Fixed Deposit Details", type: "SECURITY" },
+        { id: "act-2", action: "OTP Email Verification", timestamp: "2026-08-10 11:52", ip: "192.168.1.104", details: "Verified successfully! ProofToken: FE-PROOF-828FB4", type: "SECURITY" },
+        { id: "act-3", action: "Session Login", timestamp: "2026-08-10 09:15", ip: "192.168.1.104", details: "Password & Email OTP 2FA login from Chrome", type: "LOGIN" },
+        { id: "act-4", action: "KYC Vault Document Access", timestamp: "2026-08-09 21:04", ip: "192.168.1.104", details: "Aadhaar Card copy unlocked via 2FA", type: "PROFILE" },
+      ]
+    },
+    {
+      id: "dev-2",
+      name: 'iPhone 15 Pro',
+      type: "Smartphone",
+      os: "iOS 17.5",
+      browser: "FinEdge App v3.4",
+      ip: "103.21.124.89",
+      location: "Gurgaon, India",
+      fingerprint: "FP-77B1-9920-IPH",
+      firstLinked: "02 Mar 2024",
+      lastActive: "2 hours ago",
+      isCurrent: false,
+      status: "ACTIVE",
+      activities: [
+        { id: "act-5", action: "Mobile Utility Recharge", timestamp: "2026-08-10 15:30", ip: "103.21.124.89", details: "Recharged Jio 5G Prepaid ₹999", type: "TRANSFER" },
+        { id: "act-6", action: "Biometric TouchID Verified", timestamp: "2026-08-10 15:28", ip: "103.21.124.89", details: "FaceID biometric auth passed", type: "SECURITY" },
+        { id: "act-7", action: "Quick Fund Transfer", timestamp: "2026-08-08 18:40", ip: "103.21.124.89", details: "Transferred ₹5,000 to Alex Demo", type: "TRANSFER" },
+      ]
+    },
+    {
+      id: "dev-3",
+      name: 'Windows 11 Workstation',
+      type: "Desktop",
+      os: "Windows 11 Pro 23H2",
+      browser: "Microsoft Edge 126.0",
+      ip: "49.36.210.12",
+      location: "Mumbai, India",
+      fingerprint: "FP-33C4-1029-WIN",
+      firstLinked: "10 Nov 2023",
+      lastActive: "3 days ago",
+      isCurrent: false,
+      status: "INACTIVE",
+      activities: [
+        { id: "act-8", action: "Account Password Updated", timestamp: "2026-08-07 14:15", ip: "49.36.210.12", details: "Password changed successfully via 2FA Email OTP", type: "SECURITY" },
+        { id: "act-9", action: "Fixed Deposit Account Created", timestamp: "2026-07-28 10:00", ip: "49.36.210.12", details: "Opened High Yield FD ₹200,000", type: "TRANSFER" },
+      ]
+    },
+    {
+      id: "dev-4",
+      name: 'iPad Air 5th Gen',
+      type: "Tablet",
+      os: "iPadOS 17.4",
+      browser: "Mobile Safari",
+      ip: "122.176.45.19",
+      location: "New Delhi, India",
+      fingerprint: "FP-11D9-5582-IPD",
+      firstLinked: "20 Aug 2023",
+      lastActive: "12 days ago",
+      isCurrent: false,
+      status: "REVOKED",
+      activities: [
+        { id: "act-10", action: "Session Revoked by User", timestamp: "2026-07-29 19:22", ip: "122.176.45.19", details: "Session access terminated manually", type: "SECURITY" },
+        { id: "act-11", action: "Login Attempt", timestamp: "2026-07-29 18:50", ip: "122.176.45.19", details: "Safari browser login", type: "LOGIN" },
+      ]
+    },
+    {
+      id: "dev-5",
+      name: 'Samsung Galaxy S24 Ultra',
+      type: "Smartphone",
+      os: "Android 14",
+      browser: "Samsung Internet",
+      ip: "182.72.10.44",
+      location: "Bengaluru, India",
+      fingerprint: "FP-55E2-8819-GAL",
+      firstLinked: "12 Feb 2024",
+      lastActive: "1 month ago",
+      isCurrent: false,
+      status: "INACTIVE",
+      activities: [
+        { id: "act-12", action: "Beneficiary Added", timestamp: "2026-07-10 11:05", ip: "182.72.10.44", details: "Added HDFC Bank account 98765432", type: "PROFILE" },
+        { id: "act-13", action: "Fingerprint Biometric Auth", timestamp: "2026-07-10 11:00", ip: "182.72.10.44", details: "Android Biometric Auth Verified", type: "SECURITY" },
+      ]
+    }
   ]);
 
   // Warning Modal States
@@ -87,13 +186,13 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
     setToggles(prev => ({ ...prev, [optionKey]: newStatus }));
   };
 
-  const handlePromptRevokeDevice = (dev: { id: number; name: string; time: string; isCurrent: boolean }) => {
-    setSelectedDevice(dev);
+  const handlePromptRevokeDevice = (dev: { id: string | number; name: string; time: string; isCurrent: boolean }) => {
+    setSelectedDevice(dev as any);
     setRevokeModalOpen(true);
   };
 
-  const handleConfirmRevokeDevice = (deviceId: number) => {
-    setDevices(prev => prev.filter(d => d.id !== deviceId));
+  const handleConfirmRevokeDevice = (deviceId: string | number) => {
+    setDevices(prev => prev.map(d => (d.id === String(deviceId) || d.id === deviceId) ? { ...d, status: "REVOKED" as const, isCurrent: false } : d));
   };
 
   const handleDocumentClick = (doc: VaultDocument) => {
@@ -164,32 +263,91 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
       </div>
 
       {/* 2. Linked Devices Card */}
-      <div className="bg-surface-container rounded-xl border border-surface-container-highest overflow-hidden shadow-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold m-0">Linked Devices</h3>
-          <span className="px-2 py-0.5 bg-surface-variant text-on-surface-variant text-[10px] font-bold rounded">{devices.length} Active</span>
+      <div className="bg-surface-container rounded-xl border border-surface-container-highest overflow-hidden shadow-lg p-6 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/10 pb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-semibold m-0">Linked Devices</h3>
+            <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">
+              {devices.filter(d => d.status === 'ACTIVE').length} Active
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPreviousDevices(prev => !prev)}
+            className="px-3 py-1.5 bg-surface-high border border-outline-variant/20 hover:bg-surface-highest text-on-surface-variant hover:text-on-surface text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <History size={14} className="text-primary" />
+            {showPreviousDevices ? "Show Active Only" : `View All Devices & History (${devices.length})`}
+          </button>
         </div>
-        
+
+        <p className="text-xs text-on-surface-variant m-0 flex items-center gap-1.5">
+          <Info size={14} className="text-primary shrink-0" />
+          Click any device card below to view detailed specs, IP logs, and complete activity history.
+        </p>
+
         <div className="flex flex-col gap-3">
-          {devices.map(dev => (
-            <div key={dev.id} className="flex items-center gap-4 p-3 bg-surface-container-highest/30 rounded-lg border border-primary/10">
-              <dev.icon className={`w-6 h-6 ${dev.isCurrent ? 'text-primary' : 'text-on-surface-variant'}`} />
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm text-on-surface truncate">{dev.name}</span>
-                <span className={`text-xs ${dev.isCurrent ? 'text-teal-400' : 'text-on-surface-variant'}`}>{dev.time}</span>
-              </div>
-              <button 
-                type="button"
-                onClick={() => handlePromptRevokeDevice(dev)}
-                className="text-outline hover:text-error transition-colors p-1" 
-                title="Remove Device"
+          {(showPreviousDevices ? devices : devices.filter(d => d.status === 'ACTIVE')).map(dev => {
+            const Icon = dev.type === 'Laptop' ? Laptop : dev.type === 'Smartphone' ? Smartphone : dev.type === 'Tablet' ? Tablet : Monitor;
+            return (
+              <div 
+                key={dev.id} 
+                onClick={() => setSelectedDeviceModal(dev)}
+                className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all cursor-pointer group ${
+                  dev.isCurrent 
+                    ? 'bg-primary/5 border-primary/30 hover:bg-primary/10 shadow-sm' 
+                    : dev.status === 'REVOKED'
+                    ? 'bg-error/5 border-error/20 opacity-75 hover:opacity-100'
+                    : 'bg-surface-container-highest/30 border-outline-variant/10 hover:border-outline-variant/40 hover:bg-surface-high'
+                }`}
               >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
-          {devices.length === 0 && (
-            <p className="text-xs text-on-surface-variant text-center py-2">No active linked devices</p>
+                <div className={`p-2.5 rounded-xl ${dev.isCurrent ? 'bg-primary/10 text-primary' : 'bg-surface-high text-on-surface-variant'}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+
+                <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{dev.name}</span>
+                    {dev.isCurrent && (
+                      <span className="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 text-[10px] font-bold">Current</span>
+                    )}
+                    {dev.status === 'REVOKED' && (
+                      <span className="px-2 py-0.5 rounded-full bg-error/10 text-error text-[10px] font-bold">Revoked</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5 font-mono">
+                    <span>{dev.os}</span>
+                    <span>•</span>
+                    <span className={dev.isCurrent ? 'text-teal-400 font-semibold' : ''}>{dev.lastActive}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDeviceModal(dev)}
+                    className="px-3 py-1.5 bg-surface-high text-on-surface-variant hover:text-primary hover:bg-surface-highest text-xs rounded-lg font-medium transition-all cursor-pointer"
+                  >
+                    Details &amp; Activity
+                  </button>
+                  {dev.status !== 'REVOKED' && (
+                    <button 
+                      type="button"
+                      onClick={() => handlePromptRevokeDevice({ id: dev.id, name: dev.name, time: dev.lastActive, isCurrent: dev.isCurrent })}
+                      className="text-outline hover:text-error transition-colors p-1.5 rounded-lg hover:bg-error/10 cursor-pointer" 
+                      title="Revoke Device Access"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {(showPreviousDevices ? devices : devices.filter(d => d.status === 'ACTIVE')).length === 0 && (
+            <p className="text-xs text-on-surface-variant text-center py-4">No devices found for this filter.</p>
           )}
         </div>
       </div>
@@ -368,6 +526,17 @@ export default function SecurityAndDevices({ nominee: propNominee, onUpdateNomin
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         documentTitle="Vault Document"
+      />
+
+      {/* DEVICE DETAILS & ACTIVITY TIMELINE POPUP MODAL */}
+      <DeviceDetailsModal
+        device={selectedDeviceModal}
+        isOpen={!!selectedDeviceModal}
+        onClose={() => setSelectedDeviceModal(null)}
+        onRevokeAccess={(deviceId) => {
+          setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, status: 'REVOKED' as const, isCurrent: false } : d));
+          setSelectedDeviceModal(null);
+        }}
       />
       
     </div>
