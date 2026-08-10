@@ -12,7 +12,7 @@ import AccountVerificationDialog from '../../components/AccountVerificationDialo
 import AccountProductModal from '../../components/modals/AccountProductModal';
 
 function AccountsContent() {
-  const { verificationStates, requestVerification, refreshAllData } = useAccounts();
+  const { verificationStates, requestVerification, cancelVerification, refreshAllData } = useAccounts();
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
 
   const accountIdToVerify = Object.keys(verificationStates).find(id => verificationStates[id] === "VERIFICATION_REQUIRED");
@@ -35,7 +35,7 @@ function AccountsContent() {
 
       <AccountVerificationDialog 
         accountId={accountIdToVerify || null} 
-        onClose={() => requestVerification("")} 
+        onClose={() => cancelVerification(accountIdToVerify || undefined)} 
       />
 
       <AccountProductModal 

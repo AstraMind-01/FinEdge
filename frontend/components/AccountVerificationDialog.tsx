@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AccountVerificationDialog({ accountId, onClose, onSuccess }: Props) {
-  const { accounts, verificationStates, verifyAccountWithPin } = useAccounts();
+  const { accounts, verificationStates, verifyAccountWithPin, cancelVerification } = useAccounts();
   const account = accounts.find(a => a.id === accountId);
   const state = accountId ? verificationStates[accountId] : "NOT_VERIFIED";
 
@@ -51,6 +51,11 @@ export default function AccountVerificationDialog({ accountId, onClose, onSucces
   const handleClose = () => {
     setMpin("");
     setErrorMsg(null);
+    if (accountId) {
+      cancelVerification(accountId);
+    } else {
+      cancelVerification(undefined);
+    }
     onClose();
   };
 

@@ -69,7 +69,7 @@ interface AccountContextType {
   investMutualFund: (accountId: string, fundName: string, amount: number, isSip: boolean) => Promise<void>;
   pendingApprovals: { id: string; type: "BENEFICIARY" | "LOAN" | "HIGH_VALUE_TRANSFER"; title: string; subtitle: string; timeAgo: string; amount?: number; accountId?: string }[];
   approvePendingItem: (id: string, actionType: "APPROVE_BENEFICIARY" | "APPROVE_LOAN" | "VERIFY_OTP", payload?: any) => Promise<void>;
-  cancelVerification: (id: string) => void;
+  cancelVerification: (id?: string) => void;
   verifyAccountWithPin: (id: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   isAccountVerified: (id: string) => boolean;
   getAccountSessionRemainingTime: (id: string) => number;
@@ -389,10 +389,20 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const cancelVerification = (id: string) => {
-    if (id) {
-      setVerificationStates(prev => ({ ...prev, [id]: "NOT_VERIFIED" }));
-    }
+  const cancelVerification = (id?: string) => {
+    setVerificationStates(prev => {
+      const next = { ...prev };
+      if (id) {
+        next[id] = "NOT_VERIFIED";
+      } else {
+        Object.keys(next).forEach(k => {
+          if (next[k] === "VERIFICATION_REQUIRED") {
+            next[k] = "NOT_VERIFIED";
+          }
+        });
+      }
+      return next;
+    });
   };
 
   const isAccountVerified = (id: string): boolean => {
