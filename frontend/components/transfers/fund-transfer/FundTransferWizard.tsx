@@ -7,10 +7,12 @@ import Step3Review from './Step3Review';
 import Step4Success from './Step4Success';
 import TransferSummarySidebar from './TransferSummarySidebar';
 import { Account, Beneficiary } from '../../../types';
+import { useAccounts } from '../../../context/AccountContext';
 import { MockApi } from '../../../lib/mockApi';
 import { Skeleton } from '../../ui/skeleton';
 
 export default function FundTransferWizard() {
+  const { accounts: contextAccounts } = useAccounts();
   const [currentStep, setCurrentStep] = useState(1);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -21,21 +23,24 @@ export default function FundTransferWizard() {
   const [toRecipient, setToRecipient] = useState<Beneficiary | Account | undefined>();
   const [amount, setAmount] = useState<string>("");
   const [transferMode, setTransferMode] = useState("IMPS");
+  const [paymentResult, setPaymentResult] = useState<{ paymentId?: string; orderId?: string; timestamp?: string } | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const [accs, bens] = await Promise.all([
-        MockApi.getAccounts(),
-        MockApi.getBeneficiaries()
-      ]);
-      const validAccs = accs.filter(a => a.type === 'SAVINGS' || a.type === 'CURRENT');
-      setAccounts(validAccs);
+    const loadBens = async () => {
+      const bens = await MockApi.getBeneficiaries();
       setBeneficiaries(bens);
-      if (validAccs.length > 0) setFromAccount(validAccs[0]);
-      setIsLoading(false);
     };
-    fetchData();
+    loadBens();
   }, []);
+
+  useEffect(() => {
+    const validAccs = contextAccounts.filter(a => a.type === 'SAVINGS' || a.type === 'CURRENT');
+    setAccounts(validAccs);
+    if (validAccs.length > 0 && !fromAccount) {
+      setFromAccount(validAccs[0]);
+    }
+    setIsLoading(false);
+  }, [contextAccounts]);
 
   const fee = transferMode === "IMPS" && parseFloat(amount) > 0 ? 5 : 0;
 
@@ -47,6 +52,12 @@ export default function FundTransferWizard() {
     setToRecipient(undefined);
     setAmount("");
     setTransferMode("IMPS");
+    setPaymentResult(null);
+  };
+
+  const handlePaymentSuccess = (res?: { paymentId?: string; orderId?: string; timestamp?: string }) => {
+    if (res) setPaymentResult(res);
+    handleNext();
   };
 
   if (isLoading) {
@@ -97,7 +108,7 @@ export default function FundTransferWizard() {
               amount={amount}
               transferMode={transferMode}
               fee={fee}
-              onNext={handleNext}
+              onNext={handlePaymentSuccess}
               onBack={handleBack}
               onEdit={handleEdit}
             />
@@ -109,6 +120,7 @@ export default function FundTransferWizard() {
               amount={amount}
               transferMode={transferMode}
               fee={fee}
+              paymentResult={paymentResult}
               onReset={handleReset}
             />
           )}

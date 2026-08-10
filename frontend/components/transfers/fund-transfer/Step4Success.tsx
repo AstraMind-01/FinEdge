@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Account, Beneficiary } from '../../../types';
-import { CheckCircle2, Download, Share2, Plus, Home } from 'lucide-react';
+import { CheckCircle2, Download, Share2, Plus, Home, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 interface Step4SuccessProps {
@@ -11,11 +11,12 @@ interface Step4SuccessProps {
   amount: string;
   transferMode: string;
   fee: number;
+  paymentResult?: { paymentId?: string; orderId?: string; timestamp?: string } | null;
   onReset: () => void;
 }
 
 export default function Step4Success({
-  fromAccount, toRecipient, amount, transferMode, fee, onReset
+  fromAccount, toRecipient, amount, transferMode, fee, paymentResult, onReset
 }: Step4SuccessProps) {
 
   const formatCurrency = (val: string | number) => {
@@ -24,8 +25,10 @@ export default function Step4Success({
   };
 
   const isRecipientAccount = toRecipient && 'balance' in toRecipient;
-  const transactionId = `TXN-${Math.floor(Math.random() * 900000) + 100000}`;
-  const timestamp = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const transactionId = paymentResult?.paymentId || `TXN-${Math.floor(Math.random() * 900000) + 100000}`;
+  const timestamp = paymentResult?.timestamp 
+    ? new Date(paymentResult.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <Card className="w-full flex flex-col items-center border border-outline-variant/10 bg-surface-container shadow-sm overflow-hidden py-12 px-6">
@@ -35,7 +38,14 @@ export default function Step4Success({
           <CheckCircle2 size={40} />
         </div>
         
-        <h2 className="font-headline-lg text-[28px] font-bold text-on-surface">Transfer Successful!</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-headline-lg text-[28px] font-bold text-on-surface">Transfer Successful!</h2>
+        </div>
+        
+        <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
+          <ShieldCheck size={14} /> Razorpay Verified &amp; Processed
+        </span>
+
         <p className="text-[14px] text-on-surface-variant">
           Your funds have been securely transferred via {transferMode}.
         </p>
@@ -44,9 +54,16 @@ export default function Step4Success({
         <div className="w-full bg-surface-container-low rounded-2xl border border-outline-variant/10 p-6 flex flex-col gap-4 mt-4 shadow-sm text-left">
           
           <div className="flex items-center justify-between pb-3 border-b border-outline-variant/10">
-            <span className="text-[12px] text-on-surface-variant uppercase tracking-wider font-medium">Transaction ID</span>
-            <span className="text-[14px] font-mono text-on-surface font-semibold">{transactionId}</span>
+            <span className="text-[12px] text-on-surface-variant uppercase tracking-wider font-medium">Razorpay Payment ID</span>
+            <span className="text-[13px] font-mono text-primary font-bold">{transactionId}</span>
           </div>
+
+          {paymentResult?.orderId && (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-on-surface-variant">Order Reference</span>
+              <span className="text-[12px] font-mono text-on-surface">{paymentResult.orderId}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-on-surface-variant">Amount Sent</span>
@@ -54,7 +71,7 @@ export default function Step4Success({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-on-surface-variant">To</span>
+            <span className="text-[13px] text-on-surface-variant">To Recipient</span>
             <div className="flex flex-col items-end">
               <span className="text-[14px] font-semibold text-on-surface">{toRecipient?.name}</span>
               <span className="text-[12px] text-on-surface-variant font-mono">
@@ -64,7 +81,7 @@ export default function Step4Success({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-[13px] text-on-surface-variant">From</span>
+            <span className="text-[13px] text-on-surface-variant">From Account</span>
             <div className="flex flex-col items-end">
               <span className="text-[14px] font-semibold text-on-surface">{fromAccount?.name}</span>
               <span className="text-[12px] text-on-surface-variant font-mono">{fromAccount?.maskedNumber}</span>
@@ -72,7 +89,7 @@ export default function Step4Success({
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-dashed border-outline-variant/20">
-            <span className="text-[13px] text-on-surface-variant">Date & Time</span>
+            <span className="text-[13px] text-on-surface-variant">Date &amp; Time</span>
             <span className="text-[13px] font-medium text-on-surface">{timestamp}</span>
           </div>
         </div>

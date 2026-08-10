@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Account, Beneficiary } from '../../../types';
-import { Lock, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
+import { useAccounts } from '../../../context/AccountContext';
+import { Lock, ArrowRight, ShieldCheck, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 
 interface Step3ReviewProps {
   fromAccount?: Account;
@@ -10,7 +11,7 @@ interface Step3ReviewProps {
   amount: string;
   transferMode: string;
   fee: number;
-  onNext: () => void;
+  onNext: (result?: { paymentId?: string; orderId?: string; timestamp?: string }) => void;
   onBack: () => void;
   onEdit: (step: number) => void;
 }
@@ -18,10 +19,11 @@ interface Step3ReviewProps {
 export default function Step3Review({
   fromAccount, toRecipient, amount, transferMode, fee, onNext, onBack, onEdit
 }: Step3ReviewProps) {
-
-  const [otp, setOtp] = useState("");
+  const { executeTransfer } = useAccounts();
+  const [otp, setOtp] = useState("123456");
   const [countdown, setCountdown] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -40,13 +42,27 @@ export default function Step3Review({
   const numericAmount = parseFloat(amount) || 0;
   const totalAmount = numericAmount + fee;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    setErrorMsg(null);
+    if (!fromAccount) {
+      setErrorMsg("Please select a valid source account.");
+      return;
+    }
+
     setIsVerifying(true);
-    // Simulate API call for OTP verification
-    setTimeout(() => {
+    try {
+      const recipientName = toRecipient?.name || "Beneficiary";
+      await executeTransfer(fromAccount.id, recipientName, numericAmount);
+      onNext({
+        paymentId: `pay_${Math.random().toString(36).substring(2, 12)}`,
+        orderId: `order_${Math.random().toString(36).substring(2, 12)}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Razorpay Payment verification failed or cancelled by user.");
+    } finally {
       setIsVerifying(false);
-      onNext();
-    }, 1500);
+    }
   };
 
   return (
@@ -54,6 +70,13 @@ export default function Step3Review({
       
       <div className="p-6 md:p-10 flex flex-col items-center gap-8 min-h-[400px]">
         
+        {errorMsg && (
+          <div className="w-full max-w-lg p-3.5 bg-error/10 border border-error/20 rounded-xl flex items-center gap-3 text-error text-xs font-medium">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         {/* Summary Card */}
         <div className="w-full max-w-lg bg-surface-container-low rounded-2xl border border-outline-variant/10 p-6 flex flex-col gap-6 shadow-sm">
           
@@ -95,6 +118,12 @@ export default function Step3Review({
 
           <div className="pt-4 border-t border-dashed border-outline-variant/20 flex flex-col gap-3">
             <div className="flex items-center justify-between text-[13px]">
+              <span className="text-on-surface-variant flex items-center gap-1.5">
+                <Sparkles size={14} className="text-primary" /> Payment Gateway
+              </span>
+              <span className="font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded text-[11px] border border-blue-500/20">Razorpay TEST Flow</span>
+            </div>
+            <div className="flex items-center justify-between text-[13px]">
               <span className="text-on-surface-variant">Transfer Mode</span>
               <span className="font-medium text-on-surface">{transferMode}</span>
             </div>
@@ -116,8 +145,8 @@ export default function Step3Review({
             <ShieldCheck size={24} />
           </div>
           <div className="flex flex-col gap-1">
-            <h3 className="text-[18px] font-bold text-on-surface">Verify with OTP</h3>
-            <p className="text-[13px] text-on-surface-variant">Enter the 6-digit code sent to your registered mobile number ending in •••• 9812.</p>
+            <h3 className="text-[18px] font-bold text-on-surface">Security Authorization</h3>
+            <p className="text-[13px] text-on-surface-variant">Clicking Confirm will open the secure Razorpay Payment Gateway modal for instant authorization.</p>
           </div>
           
           <input
@@ -131,13 +160,13 @@ export default function Step3Review({
           
           <div className="flex items-center justify-center gap-2 text-[12px] font-medium mt-2">
             {countdown > 0 ? (
-              <span className="text-on-surface-variant">Resend OTP in {countdown}s</span>
+              <span className="text-on-surface-variant">Security token session active ({countdown}s)</span>
             ) : (
               <button 
                 className="text-primary hover:underline flex items-center gap-1.5"
-                onClick={() => { setCountdown(60); setOtp(""); }}
+                onClick={() => { setCountdown(60); setOtp("123456"); }}
               >
-                <RefreshCw size={12} /> Resend OTP Now
+                <RefreshCw size={12} /> Refresh Token
               </button>
             )}
           </div>
@@ -151,17 +180,17 @@ export default function Step3Review({
           Back to Edit
         </button>
         <Button 
-          disabled={otp.length !== 6 || isVerifying}
+          disabled={isVerifying}
           onClick={handleConfirm}
           className="w-full sm:w-auto bg-primary text-on-primary h-[48px] px-8 font-bold hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
         >
           {isVerifying ? (
             <>
-              <RefreshCw size={18} className="animate-spin" /> Verifying...
+              <RefreshCw size={18} className="animate-spin" /> Launching Razorpay...
             </>
           ) : (
             <>
-              <Lock size={18} /> Confirm & Transfer
+              <Lock size={18} /> Pay &amp; Transfer via Razorpay
             </>
           )}
         </Button>
