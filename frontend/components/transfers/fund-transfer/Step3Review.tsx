@@ -3,6 +3,7 @@ import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Account, Beneficiary } from '../../../types';
 import { useAccounts } from '../../../context/AccountContext';
+import { requestOtpSession, verifyOtpSession, resendOtpSession } from '../../../lib/otpService';
 import { Lock, ArrowRight, ShieldCheck, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 
 interface Step3ReviewProps {
@@ -20,10 +21,25 @@ export default function Step3Review({
   fromAccount, toRecipient, amount, transferMode, fee, onNext, onBack, onEdit
 }: Step3ReviewProps) {
   const { executeTransfer } = useAccounts();
-  const [otp, setOtp] = useState("123456");
+  const [otp, setOtp] = useState("");
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Initialize secure OTP session on load
+  useEffect(() => {
+    let isMounted = true;
+    const initOtp = async () => {
+      const res = await requestOtpSession("FUND_TRANSFER", fromAccount?.id);
+      if (isMounted && res.success && res.verificationToken) {
+        setVerificationToken(res.verificationToken);
+        setCountdown(res.resendCooldownSeconds || 60);
+      }
+    };
+    initOtp();
+    return () => { isMounted = false; };
+  }, [fromAccount]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -32,6 +48,27 @@ export default function Step3Review({
     }
     return () => clearTimeout(timer);
   }, [countdown]);
+
+  const handleResend = async () => {
+    setErrorMsg(null);
+    if (!verificationToken) {
+      const res = await requestOtpSession("FUND_TRANSFER", fromAccount?.id);
+      if (res.success && res.verificationToken) {
+        setVerificationToken(res.verificationToken);
+        setCountdown(res.resendCooldownSeconds || 60);
+      } else {
+        setErrorMsg(res.error || "Failed to resend OTP.");
+      }
+    } else {
+      const res = await resendOtpSession(verificationToken);
+      if (res.success && res.verificationToken) {
+        setVerificationToken(res.verificationToken);
+        setCountdown(res.resendCooldownSeconds || 60);
+      } else {
+        setErrorMsg(res.error || "Failed to resend OTP.");
+      }
+    }
+  };
 
   const formatCurrency = (val: string | number) => {
     const num = typeof val === 'string' ? parseFloat(val) || 0 : val;
@@ -48,9 +85,26 @@ export default function Step3Review({
       setErrorMsg("Please select a valid source account.");
       return;
     }
+    if (!verificationToken) {
+      setErrorMsg("OTP session expired or invalid. Please click resend.");
+      return;
+    }
+    if (otp.length !== 6) {
+      setErrorMsg("Please enter the 6-digit OTP code.");
+      return;
+    }
 
     setIsVerifying(true);
     try {
+      // 1. Verify OTP with central OTP engine
+      const verifyRes = await verifyOtpSession(verificationToken, otp);
+      if (!verifyRes.success) {
+        setErrorMsg(verifyRes.error || "OTP Verification failed.");
+        setIsVerifying(false);
+        return;
+      }
+
+      // 2. Launch Razorpay payment flow
       const recipientName = toRecipient?.name || "Beneficiary";
       await executeTransfer(fromAccount.id, recipientName, numericAmount);
       onNext({
@@ -146,7 +200,7 @@ export default function Step3Review({
           </div>
           <div className="flex flex-col gap-1">
             <h3 className="text-[18px] font-bold text-on-surface">Security Authorization</h3>
-            <p className="text-[13px] text-on-surface-variant">Clicking Confirm will open the secure Razorpay Payment Gateway modal for instant authorization.</p>
+            <p className="text-[13px] text-on-surface-variant">Enter 6-digit OTP dispatched to registered device &amp; authorize via Razorpay Gateway.</p>
           </div>
           
           <input
@@ -160,13 +214,14 @@ export default function Step3Review({
           
           <div className="flex items-center justify-center gap-2 text-[12px] font-medium mt-2">
             {countdown > 0 ? (
-              <span className="text-on-surface-variant">Security token session active ({countdown}s)</span>
+              <span className="text-on-surface-variant">Resend OTP in {countdown}s</span>
             ) : (
               <button 
-                className="text-primary hover:underline flex items-center gap-1.5"
-                onClick={() => { setCountdown(60); setOtp("123456"); }}
+                type="button"
+                className="text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
+                onClick={handleResend}
               >
-                <RefreshCw size={12} /> Refresh Token
+                <RefreshCw size={12} /> Resend OTP Now
               </button>
             )}
           </div>
@@ -180,17 +235,17 @@ export default function Step3Review({
           Back to Edit
         </button>
         <Button 
-          disabled={isVerifying}
+          disabled={otp.length !== 6 || isVerifying}
           onClick={handleConfirm}
-          className="w-full sm:w-auto bg-primary text-on-primary h-[48px] px-8 font-bold hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
+          className="w-full sm:w-auto bg-primary text-on-primary h-[48px] px-8 font-bold hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50"
         >
           {isVerifying ? (
             <>
-              <RefreshCw size={18} className="animate-spin" /> Launching Razorpay...
+              <RefreshCw size={18} className="animate-spin" /> Verifying OTP &amp; Launching...
             </>
           ) : (
             <>
-              <Lock size={18} /> Pay &amp; Transfer via Razorpay
+              <Lock size={18} /> Verify OTP &amp; Pay via Razorpay
             </>
           )}
         </Button>

@@ -56,6 +56,12 @@ spring:
           filters:
             - name: RateLimitFilter
 
+        # ── OTP Service ───────────────────────────────────────────────
+        - id: otp-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/otp/**
+
         # ── Account Service ───────────────────────────────────────────
         - id: account-service
           uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
