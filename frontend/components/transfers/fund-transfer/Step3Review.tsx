@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Account, Beneficiary } from '../../../types';
@@ -26,9 +26,13 @@ export default function Step3Review({
   const [countdown, setCountdown] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const otpRequestedRef = useRef(false);
 
   // Initialize secure OTP session on load
   useEffect(() => {
+    if (otpRequestedRef.current) return;
+    otpRequestedRef.current = true;
+
     let isMounted = true;
     const initOtp = async () => {
       const res = await requestOtpSession("FUND_TRANSFER", fromAccount?.id);

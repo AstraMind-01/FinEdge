@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     const data = await backendRes.json();
-    return NextResponse.json(data, { status: backendRes.ok ? 200 : backendRes.status });
+    return NextResponse.json(data, { status: 200 });
   } catch (err: any) {
     console.error("OTP Verify Proxy Error:", err);
     return NextResponse.json({ success: false, error: "Failed to connect to OTP verification service." }, { status: 500 });

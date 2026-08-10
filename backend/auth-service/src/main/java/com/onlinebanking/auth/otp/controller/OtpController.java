@@ -22,18 +22,12 @@ public class OtpController {
             Authentication authentication) {
         String username = (authentication != null) ? authentication.getName() : null;
         OtpResponse response = otpService.generateOtp(request, username);
-        if (!response.isSuccess()) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/verify")
     public ResponseEntity<OtpResponse> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
         OtpResponse response = otpService.verifyOtp(request);
-        if (!response.isSuccess()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
         return ResponseEntity.ok(response);
     }
 
@@ -43,9 +37,6 @@ public class OtpController {
             Authentication authentication) {
         String username = (authentication != null) ? authentication.getName() : null;
         OtpResponse response = otpService.resendOtp(request, username);
-        if (!response.isSuccess()) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
-        }
         return ResponseEntity.ok(response);
     }
 }
