@@ -130,12 +130,12 @@ export default function Sidebar() {
             <span className="text-[13px] truncate">Disputes</span>
           </Link>
 
-          <Link className={getLinkClasses(false)} href="/transactions">
+          <Link aria-current={pathname === "/notifications" ? "page" : undefined} className={getLinkClasses(pathname === "/notifications")} href="/notifications">
             <Bell className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Notifications</span>
           </Link>
 
-          <Link className={getLinkClasses(false)} href="/transactions">
+          <Link aria-current={pathname === "/reports" ? "page" : undefined} className={getLinkClasses(pathname === "/reports")} href="/reports">
             <BarChart3 className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Reports &amp; Analytics</span>
           </Link>
