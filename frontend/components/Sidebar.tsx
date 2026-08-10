@@ -125,7 +125,7 @@ export default function Sidebar() {
             <span className="text-[13px] truncate">Beneficiaries</span>
           </Link>
 
-          <Link className={getLinkClasses(false)} href="/transactions">
+          <Link aria-current={pathname === "/disputes" ? "page" : undefined} className={getLinkClasses(pathname === "/disputes")} href="/disputes">
             <ShieldAlert className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Disputes</span>
           </Link>

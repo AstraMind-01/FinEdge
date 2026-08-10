@@ -75,6 +75,50 @@ const tabs = ["All Disputes", "Open (1)", "In Progress (2)", "Resolved (11)", "R
 
 export default function DisputesPage() {
   const [activeTab, setActiveTab] = useState(0);
+  const [disputeList, setDisputeList] = useState(disputes);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [txnId, setTxnId] = useState("");
+  const [reason, setReason] = useState("Unauthorized Online Transaction");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const handleRaiseDispute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/banking/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "DISPUTE_TRANSACTION",
+          payload: { transactionId: txnId || `TXN-${Date.now()}`, reason }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newDispute = {
+          id: data.ticketId || `DSP2026-${Math.floor(10000 + Math.random() * 90000)}`,
+          title: reason,
+          status: "Open",
+          amount: "₹" + (Math.floor(1000 + Math.random() * 20000)).toLocaleString("en-IN"),
+          merchant: txnId || "Online Transaction",
+          raisedAt: "Just now",
+          icon: "alert"
+        };
+        setDisputeList([newDispute, ...disputeList]);
+        setSuccessMsg(data.message || "Dispute registered successfully!");
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setSuccessMsg(null);
+          setTxnId("");
+        }, 1800);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-on-surface">
@@ -88,17 +132,20 @@ export default function DisputesPage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative mb-8 pt-4">
             <div className="flex flex-col gap-2 z-10">
               <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-1 tracking-wider uppercase font-medium">
-                <span className="hover:text-primary transition-colors cursor-pointer">Support</span>
-                <ChevronRight size={14} />
+                <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+                <span>/</span>
                 <span className="text-primary font-bold">Disputes</span>
               </div>
               <div className="flex items-center gap-3">
                 <Gavel className="text-primary w-8 h-8" />
-                <h1 className="text-4xl md:text-5xl font-bold text-on-surface m-0 leading-tight">Disputes & Complaints</h1>
+                <h1 className="text-4xl md:text-5xl font-bold text-on-surface m-0 leading-tight">Disputes &amp; Complaints</h1>
               </div>
               <p className="text-base text-on-surface-variant mt-1">Raise, track, and resolve transaction issues securely.</p>
             </div>
-            <button className="group flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-on-primary font-semibold hover:bg-primary-fixed-dim hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all duration-300 z-10 w-fit relative overflow-hidden">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="group flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-on-primary font-semibold hover:bg-primary-fixed-dim hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all duration-300 z-10 w-fit relative overflow-hidden cursor-pointer"
+            >
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
               <Plus size={20} className="relative z-10 group-hover:rotate-90 transition-transform" />
               <span className="relative z-10">Raise New Dispute</span>
@@ -392,6 +439,88 @@ export default function DisputesPage() {
 
           </div>
         </main>
+
+        {/* Raise New Dispute Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 w-full max-w-lg shadow-2xl flex flex-col gap-5 relative animate-in fade-in zoom-in duration-200">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-container-high transition-colors"
+              >
+                <XCircle size={20} />
+              </button>
+
+              <div className="flex items-center gap-3 pb-3 border-b border-outline-variant/10">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Gavel size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-on-surface m-0">Raise Transaction Dispute</h3>
+                  <p className="text-xs text-on-surface-variant m-0">File a claim for unauthorized or failed charges</p>
+                </div>
+              </div>
+
+              {successMsg && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleRaiseDispute} className="flex flex-col gap-4 text-xs">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-on-surface-variant uppercase tracking-wider text-[10px]">Transaction ID / Reference Number</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="e.g. TXN-948201 or Razorpay Pay ID"
+                    value={txnId}
+                    onChange={(e) => setTxnId(e.target.value)}
+                    className="bg-surface border border-outline-variant/30 rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:border-primary transition-all font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-on-surface-variant uppercase tracking-wider text-[10px]">Dispute Reason</label>
+                  <select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="bg-surface border border-outline-variant/30 rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:border-primary transition-all"
+                  >
+                    <option value="Unauthorized Online Transaction">Unauthorized Online Transaction</option>
+                    <option value="Double Charged / Duplicate Debit">Double Charged / Duplicate Debit</option>
+                    <option value="Merchant Amount Mismatch">Merchant Amount Mismatch</option>
+                    <option value="Failed ATM Cash Withdrawal">Failed ATM Cash Withdrawal</option>
+                    <option value="Services/Goods Not Received">Services/Goods Not Received</option>
+                  </select>
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] rounded-xl flex items-start gap-2">
+                  <Info size={16} className="shrink-0 mt-0.5" />
+                  <span>Dispute claims are subject to banking audit compliance. A formal ticket ID will be assigned upon submission.</span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-outline-variant/30 text-on-surface-variant font-medium text-xs hover:bg-surface-container-high transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-fixed-dim transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : "Submit Dispute Ticket"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { X, MoreHorizontal, BookOpen, FileCheck, UserCheck, Users, ShieldAlert, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Download, ShieldCheck } from "lucide-react";
 import { useAccounts } from "../../context/AccountContext";
 import { TaxForm16PdfBuilder } from "../../lib/pdf/documents/TaxForm16Pdf";
@@ -495,6 +496,13 @@ export default function MoreActionsModal({ isOpen, onClose }: MoreActionsModalPr
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/20">
+              <Link
+                href="/disputes"
+                onClick={onClose}
+                className="px-4 py-2 bg-surface-container-high text-primary hover:underline font-medium rounded-xl text-xs transition-all flex items-center gap-1 cursor-pointer"
+              >
+                View Disputes Dashboard
+              </Link>
               <button
                 type="button"
                 onClick={() => setActiveView("GRID")}
