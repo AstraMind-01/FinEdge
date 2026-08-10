@@ -13,12 +13,14 @@ interface AccountDetailsModalProps {
 }
 
 export default function AccountDetailsModal({ account, isOpen, onClose, isVerified: propIsVerified }: AccountDetailsModalProps) {
-  const { isAccountVerified, getAccountSessionRemainingTime } = useAccounts();
+  const { isAccountVerified, getAccountSessionRemainingTime, requestVerification, verificationStates } = useAccounts();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [remSeconds, setRemSeconds] = useState<number>(0);
 
   const accountId = account?.id || "";
-  const isVerified = accountId ? isAccountVerified(accountId) : false;
+  const isVerified = Boolean(
+    propIsVerified || (accountId ? (verificationStates[accountId] === "VERIFIED" || isAccountVerified(accountId)) : false)
+  );
 
   useEffect(() => {
     if (!isOpen || !accountId) return;
@@ -67,7 +69,7 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </div>
             <div>
               <h2 className="text-xl font-bold tracking-tight font-headline-lg">{account.name} Details</h2>
-              <p className="text-xs text-on-surface-variant">Complete account configuration & security specs</p>
+              <p className="text-xs text-on-surface-variant">Complete account configuration &amp; security specs</p>
             </div>
           </div>
           <button 
@@ -91,16 +93,23 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
               <span>Security Session Active • Expires in {formatTime(remSeconds)}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs bg-error/10 border border-error/20 text-error px-3 py-1.5 rounded-lg font-medium">
+            <button 
+              onClick={() => requestVerification(accountId)}
+              className="flex items-center gap-2 text-xs bg-error/10 border border-error/30 text-error hover:bg-error/20 px-3.5 py-1.5 rounded-lg font-medium cursor-pointer transition-all hover:scale-[1.02]"
+              title="Click to Authenticate Account"
+            >
               <Lock size={14} />
-              <span>Security Barrier: Re-authentication Required</span>
-            </div>
+              <span>Security Barrier: Re-authentication Required (Click to Authenticate)</span>
+            </button>
           )}
         </div>
 
         {/* Detail Fields Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               Account Number
             </span>
@@ -110,7 +119,7 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
               </span>
               {isVerified && (
                 <button 
-                  onClick={() => copyToClipboard(fullAccNumber, "accNum")}
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(fullAccNumber, "accNum"); }}
                   className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded-md cursor-pointer"
                   title="Copy Account Number"
                 >
@@ -120,7 +129,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </div>
           </div>
 
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               IFSC Code
             </span>
@@ -130,7 +142,7 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
               </span>
               {isVerified && (
                 <button 
-                  onClick={() => copyToClipboard(account.ifsc || "HDFC0001234", "ifsc")}
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(account.ifsc || "HDFC0001234", "ifsc"); }}
                   className="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded-md cursor-pointer"
                   title="Copy IFSC Code"
                 >
@@ -140,7 +152,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </div>
           </div>
 
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               Account Balance
             </span>
@@ -149,7 +164,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </span>
           </div>
 
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               Branch Location
             </span>
@@ -158,7 +176,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </span>
           </div>
 
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               <User size={14} /> Account Holder
             </span>
@@ -167,7 +188,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </span>
           </div>
 
-          <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+          <div 
+            onClick={() => !isVerified && requestVerification(accountId)}
+            className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+          >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
               <Calendar size={14} /> Opening Date
             </span>
@@ -177,7 +201,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
           </div>
 
           {account.nominee && (
-            <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+            <div 
+              onClick={() => !isVerified && requestVerification(accountId)}
+              className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+            >
               <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
                 Registered Nominee
               </span>
@@ -188,7 +215,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
           )}
 
           {account.linkedCard && (
-            <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+            <div 
+              onClick={() => !isVerified && requestVerification(accountId)}
+              className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+            >
               <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
                 <CreditCard size={14} /> Linked Card
               </span>
@@ -199,7 +229,10 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
           )}
 
           {account.dailyLimit && (
-            <div className="bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between">
+            <div 
+              onClick={() => !isVerified && requestVerification(accountId)}
+              className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
+            >
               <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">
                 <AlertCircle size={14} /> Daily Transfer Limit
               </span>
@@ -211,7 +244,15 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-4 border-t border-outline-variant/20">
+        <div className="flex justify-between items-center pt-4 border-t border-outline-variant/20">
+          {!isVerified ? (
+            <button
+              onClick={() => requestVerification(accountId)}
+              className="px-4 py-2 bg-primary text-on-primary hover:bg-primary-fixed-dim font-medium rounded-xl text-xs transition-all cursor-pointer shadow-md flex items-center gap-2"
+            >
+              <Lock size={14} /> Authenticate to Unmask Details
+            </button>
+          ) : <div />}
           <button
             onClick={onClose}
             className="px-5 py-2.5 bg-surface-high text-on-surface hover:bg-surface-highest font-medium rounded-xl text-sm transition-all cursor-pointer"
