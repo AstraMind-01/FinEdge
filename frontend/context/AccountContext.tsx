@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Account, Transaction, VerificationState, UserProfile, VaultDocument } from "../types";
 import { MockApi } from "../lib/mockApi";
 import { AccountApi, TransactionApi } from "../lib/api";
+import { executeRazorpayPayment, type PaymentMetadata } from "../lib/razorpay";
 
 // ─── Feature Flag ─────────────────────────────────────────────────────────────
 // Set NEXT_PUBLIC_USE_MOCK=false in .env.local to switch to the real backend.
@@ -487,16 +488,47 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   };
 
   const executeTransfer = async (from: string, to: string, amount: number) => {
+    // Execute Razorpay payment flow: Order → Checkout → Verify
+    const metadata: PaymentMetadata = {
+      type: "TRANSFER",
+      sourceAccountId: from,
+      destinationAccountId: to,
+      description: `Fund Transfer ₹${amount.toLocaleString("en-IN")}`,
+    };
+
+    const verification = await executeRazorpayPayment(amount, metadata, {
+      name: userProfile.name,
+      email: userProfile.email,
+      phone: userProfile.phone.replace(/\s/g, ""),
+    });
+
+    // Payment verified by server — now update local state
     await MockApi.transferFunds(from, to, amount);
     await refreshAllData();
-    if (amount > 0) {
-      addNotification("Transfer Executed", `₹${amount.toLocaleString("en-IN")} debited from account.`, "DEBIT");
-      addInboxMessage(
-        "Bank Transfers",
-        `Fund Transfer Advice: ₹${amount.toLocaleString("en-IN")}`,
-        `Your direct transfer of ₹${amount.toLocaleString("en-IN")} has been debited from your account and processed successfully.`
-      );
-    }
+
+    // Add Razorpay-verified transaction record
+    const rzpTxn: Transaction = {
+      id: verification.transactionId || `TXN-${Date.now()}`,
+      accountId: from,
+      merchantName: `Transfer to ${to}`,
+      amount,
+      date: new Date().toISOString().split("T")[0],
+      type: "DEBIT",
+      category: "Transfer",
+      status: "SUCCESS",
+      referenceId: verification.paymentId,
+      paymentMode: "Razorpay",
+      remarks: `Razorpay Order: ${verification.orderId}`,
+      timestamp: verification.verifiedAt,
+    };
+    setTransactions(prev => [rzpTxn, ...prev]);
+
+    addNotification("Transfer Executed via Razorpay", `₹${amount.toLocaleString("en-IN")} debited from account. Payment ID: ${verification.paymentId}`, "DEBIT");
+    addInboxMessage(
+      "Bank Transfers",
+      `Fund Transfer Advice: ₹${amount.toLocaleString("en-IN")}`,
+      `Your fund transfer of ₹${amount.toLocaleString("en-IN")} was processed via Razorpay (Payment ID: ${verification.paymentId}).`
+    );
   };
 
   const updateAccountLimits = async (accountId: string, daily: number, transaction: number, atm: number) => {
@@ -529,24 +561,90 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   };
 
   const payBill = async (accountId: string, billerName: string, category: string, amount: number) => {
+    // Execute Razorpay payment flow for bill payment
+    const metadata: PaymentMetadata = {
+      type: "BILL_PAYMENT",
+      sourceAccountId: accountId,
+      billerName,
+      billerCategory: category,
+      description: `Bill Payment to ${billerName}`,
+    };
+
+    const verification = await executeRazorpayPayment(amount, metadata, {
+      name: userProfile.name,
+      email: userProfile.email,
+      phone: userProfile.phone.replace(/\s/g, ""),
+    });
+
+    // Payment verified — update local state
     await MockApi.payBill(accountId, billerName, category, amount);
     await refreshAllData();
-    addNotification("Bill Payment Successful", `₹${amount.toLocaleString("en-IN")} paid to ${billerName}.`, "DEBIT");
+
+    const rzpTxn: Transaction = {
+      id: verification.transactionId || `TXN-${Date.now()}`,
+      accountId,
+      merchantName: billerName,
+      amount,
+      date: new Date().toISOString().split("T")[0],
+      type: "DEBIT",
+      category: "Bills",
+      status: "SUCCESS",
+      referenceId: verification.paymentId,
+      paymentMode: "Razorpay",
+      remarks: `Bill Payment via Razorpay Order: ${verification.orderId}`,
+      timestamp: verification.verifiedAt,
+    };
+    setTransactions(prev => [rzpTxn, ...prev]);
+
+    addNotification("Bill Payment via Razorpay", `₹${amount.toLocaleString("en-IN")} paid to ${billerName}. Payment ID: ${verification.paymentId}`, "DEBIT");
     addInboxMessage(
       "Utility Bill Payments",
       `Bill Payment Receipt: ${billerName}`,
-      `Your utility payment of ₹${amount.toLocaleString("en-IN")} to ${billerName} (${category}) was processed successfully.`
+      `Your bill payment of ₹${amount.toLocaleString("en-IN")} to ${billerName} (${category}) was verified via Razorpay (Payment ID: ${verification.paymentId}).`
     );
   };
 
   const rechargeMobile = async (accountId: string, mobileNumber: string, operator: string, amount: number) => {
+    // Execute Razorpay payment flow for mobile recharge
+    const metadata: PaymentMetadata = {
+      type: "RECHARGE",
+      sourceAccountId: accountId,
+      mobileNumber,
+      operator,
+      description: `Recharge ${mobileNumber} (${operator})`,
+    };
+
+    const verification = await executeRazorpayPayment(amount, metadata, {
+      name: userProfile.name,
+      email: userProfile.email,
+      phone: userProfile.phone.replace(/\s/g, ""),
+    });
+
+    // Payment verified — update local state
     await MockApi.rechargeMobile(accountId, mobileNumber, operator, amount);
     await refreshAllData();
-    addNotification("Mobile Recharge Successful", `₹${amount.toLocaleString("en-IN")} recharge done for ${mobileNumber}.`, "DEBIT");
+
+    const rzpTxn: Transaction = {
+      id: verification.transactionId || `TXN-${Date.now()}`,
+      accountId,
+      merchantName: `${operator} Recharge`,
+      amount,
+      date: new Date().toISOString().split("T")[0],
+      type: "DEBIT",
+      category: "Bills",
+      status: "SUCCESS",
+      referenceId: verification.paymentId,
+      paymentMode: "Razorpay",
+      remarks: `Mobile Recharge via Razorpay Order: ${verification.orderId} | ${mobileNumber}`,
+      timestamp: verification.verifiedAt,
+    };
+    setTransactions(prev => [rzpTxn, ...prev]);
+
+    addNotification("Recharge via Razorpay", `₹${amount.toLocaleString("en-IN")} recharge for ${mobileNumber}. Payment ID: ${verification.paymentId}`, "DEBIT");
     addInboxMessage(
       "Prepaid Recharges",
       `Mobile Recharge Advice: ${mobileNumber}`,
-      `Mobile recharge of ₹${amount.toLocaleString("en-IN")} for number ${mobileNumber} (${operator}) completed successfully.`
+      `Recharge of ₹${amount.toLocaleString("en-IN")} for ${mobileNumber} (${operator}) was verified via Razorpay (Payment ID: ${verification.paymentId}).`
     );
   };
 

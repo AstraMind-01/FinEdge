@@ -317,6 +317,8 @@ export interface UserProfile {
   customerID: string;
   kycStatus: string;
   memberSince: string;
+  nominee?: string;
+  nomineeRelation?: string;
 }
 
 export interface VaultAuditLog {

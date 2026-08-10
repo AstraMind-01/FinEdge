@@ -48,10 +48,16 @@ export default function AccountVerificationDialog({ accountId, onClose, onSucces
     }
   };
 
+  const handleClose = () => {
+    setMpin("");
+    setErrorMsg(null);
+    onClose();
+  };
+
   if (!account) return null;
 
   return (
-    <Dialog open={!!accountId} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!accountId} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="bg-surface-container border border-outline-variant/20 rounded-2xl max-w-md p-6 text-on-surface">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -119,7 +125,7 @@ export default function AccountVerificationDialog({ accountId, onClose, onSucces
           <DialogFooter className="pt-2 border-t border-outline-variant/10">
             <Button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="bg-surface-high hover:bg-surface-highest text-on-surface border-none cursor-pointer"
             >
               Cancel
