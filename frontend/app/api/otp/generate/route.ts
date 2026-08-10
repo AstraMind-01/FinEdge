@@ -9,12 +9,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "OTP purpose is required." }, { status: 400 });
     }
 
-    // Call Spring Boot backend API Gateway / auth-service
-    const backendRes = await fetch("http://localhost:8080/api/v1/otp/generate", {
+    const payload = JSON.stringify({ username, purpose, targetIdentifier });
+
+    // Try Gateway (port 8080) then fallback to Auth Service directly (port 8081)
+    let backendRes = await fetch("http://localhost:8080/api/v1/otp/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, purpose, targetIdentifier }),
-    });
+      body: payload,
+    }).catch(() => null);
+
+    if (!backendRes || !backendRes.ok) {
+      backendRes = await fetch("http://localhost:8081/api/v1/otp/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+    }
 
     const data = await backendRes.json();
     return NextResponse.json(data, { status: backendRes.ok ? 200 : backendRes.status });

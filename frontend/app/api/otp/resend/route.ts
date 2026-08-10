@@ -9,12 +9,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Verification token is required for resend." }, { status: 400 });
     }
 
-    // Call Spring Boot backend API Gateway / auth-service
-    const backendRes = await fetch("http://localhost:8080/api/v1/otp/resend", {
+    const payload = JSON.stringify({ verificationToken });
+
+    // Try Gateway (port 8080) then fallback to Auth Service directly (port 8081)
+    let backendRes = await fetch("http://localhost:8080/api/v1/otp/resend", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verificationToken }),
-    });
+      body: payload,
+    }).catch(() => null);
+
+    if (!backendRes || !backendRes.ok) {
+      backendRes = await fetch("http://localhost:8081/api/v1/otp/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+    }
 
     const data = await backendRes.json();
     return NextResponse.json(data, { status: backendRes.ok ? 200 : backendRes.status });
