@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { Plus, Search, Filter, Calendar, Folder, Clock, CheckCircle, CurrencyIcon, AlertTriangle, ArrowRight, Gavel, Phone, HelpCircle, ChevronRight, RefreshCw, XCircle, Info, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Folder, Clock, CheckCircle, CurrencyIcon, AlertTriangle, ArrowRight, Gavel, Phone, HelpCircle, ChevronRight, RefreshCw, XCircle, Info, CheckCircle2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 
 const disputes = [
@@ -78,9 +78,18 @@ export default function DisputesPage() {
   const [disputeList, setDisputeList] = useState(disputes);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  
+  // Popup Modals State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBlockCardModalOpen, setIsBlockCardModalOpen] = useState(false);
   const [cardBlocked, setCardBlocked] = useState(false);
+  const [selectedDispute, setSelectedDispute] = useState<any | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>("ALL");
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("ALL");
+
   const [txnId, setTxnId] = useState("");
   const [reason, setReason] = useState("Unauthorized Online Transaction");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +133,7 @@ export default function DisputesPage() {
     }
   };
 
-  // Tab & Search Filter Logic
+  // Tab, Type, and Search Filter Logic
   const filteredDisputes = disputeList.filter((item) => {
     const matchesSearch = 
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,11 +142,14 @@ export default function DisputesPage() {
 
     if (!matchesSearch) return false;
 
-    if (activeTab === 1) return item.status === "Open";
-    if (activeTab === 2) return item.status === "Under Investigation";
-    if (activeTab === 3) return item.status === "Resolved";
-    if (activeTab === 4) return item.status === "Rejected";
-    return true; // All Disputes
+    if (activeTab === 1 && item.status !== "Open") return false;
+    if (activeTab === 2 && item.status !== "Under Investigation") return false;
+    if (activeTab === 3 && item.status !== "Resolved") return false;
+    if (activeTab === 4 && item.status !== "Rejected") return false;
+
+    if (selectedType !== "ALL" && !item.title.toLowerCase().includes(selectedType.toLowerCase())) return false;
+
+    return true;
   });
 
   const faqs = [
@@ -235,13 +247,23 @@ export default function DisputesPage() {
                     />
                   </div>
                   <div className="flex gap-3">
-                    <button className="bg-surface-container text-on-surface px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-surface-container-high transition-colors border border-surface-container-highest cursor-pointer">
+                    <button 
+                      onClick={() => setIsTypeModalOpen(true)}
+                      className={`bg-surface-container text-on-surface px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-surface-container-high transition-colors border ${
+                        selectedType !== "ALL" ? "border-primary text-primary" : "border-surface-container-highest"
+                      } cursor-pointer`}
+                    >
                       <Filter size={16} />
-                      Type
+                      {selectedType === "ALL" ? "Type" : selectedType}
                     </button>
-                    <button className="bg-surface-container text-on-surface px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-surface-container-high transition-colors border border-surface-container-highest cursor-pointer">
+                    <button 
+                      onClick={() => setIsDateModalOpen(true)}
+                      className={`bg-surface-container text-on-surface px-4 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-surface-container-high transition-colors border ${
+                        selectedDateRange !== "ALL" ? "border-primary text-primary" : "border-surface-container-highest"
+                      } cursor-pointer`}
+                    >
                       <Calendar size={16} />
-                      Date
+                      {selectedDateRange === "ALL" ? "Date" : selectedDateRange}
                     </button>
                   </div>
                 </div>
@@ -294,7 +316,13 @@ export default function DisputesPage() {
                       {item.merchant && (
                         <div className="bg-background/50 border border-surface-container-highest p-4 rounded-xl flex items-center justify-between text-sm">
                           <span className="text-on-surface-variant">{item.merchantLabel || "Merchant"}: <span className="text-on-surface font-medium">{item.merchant}</span></span>
-                          <button className="text-primary hover:text-primary-fixed-dim transition-colors font-medium flex items-center gap-1 text-xs cursor-pointer">
+                          <button 
+                            onClick={() => {
+                              setSelectedDispute(item);
+                              setIsDetailsModalOpen(true);
+                            }}
+                            className="text-primary hover:text-primary-fixed-dim transition-colors font-medium flex items-center gap-1 text-xs cursor-pointer"
+                          >
                             View Details <ArrowRight size={14} />
                           </button>
                         </div>
@@ -541,6 +569,196 @@ export default function DisputesPage() {
                 >
                   Confirm Card Freeze
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Dispute Investigation Popup Modal */}
+        {isDetailsModalOpen && selectedDispute && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-5 relative max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+              <button 
+                onClick={() => setIsDetailsModalOpen(false)}
+                className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                <XCircle size={20} />
+              </button>
+
+              <div className="flex items-start justify-between border-b border-outline-variant/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Gavel size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-on-surface m-0">{selectedDispute.title}</h3>
+                    <p className="text-xs text-on-surface-variant font-mono mt-0.5 m-0">Ticket ID: {selectedDispute.id}</p>
+                  </div>
+                </div>
+                <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  {selectedDispute.status}
+                </div>
+              </div>
+
+              {/* Security Audit Metadata Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-surface-container-high p-4 rounded-xl text-xs">
+                <div>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold m-0">Amount</p>
+                  <p className="font-bold text-on-surface text-sm m-0">{selectedDispute.amount}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold m-0">Raised On</p>
+                  <p className="font-medium text-on-surface m-0">{selectedDispute.raisedAt}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold m-0">Security SLA</p>
+                  <p className="font-medium text-emerald-400 m-0">RBI Cyber Compliance</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold m-0">Proof Token</p>
+                  <p className="font-mono text-[10px] text-primary truncate m-0">FE-PROOF-828FB4</p>
+                </div>
+              </div>
+
+              {/* Security Audit Log */}
+              <div className="flex flex-col gap-2">
+                <h4 className="text-xs font-bold text-on-surface uppercase tracking-wider m-0 flex items-center gap-1.5">
+                  <ShieldAlert size={14} className="text-primary" />
+                  Security Investigation Log
+                </h4>
+                <div className="bg-background/80 border border-outline-variant/20 rounded-xl p-4 text-xs font-mono flex flex-col gap-2">
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Audit Trace ID:</span>
+                    <span className="text-on-surface">AUD-2026-981042</span>
+                  </div>
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Target Merchant:</span>
+                    <span className="text-on-surface">{selectedDispute.merchant || "Online Merchant"}</span>
+                  </div>
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>IP Address / Tunnel:</span>
+                    <span className="text-on-surface">192.168.1.104 (TLS 1.3 Encrypted)</span>
+                  </div>
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Verification Status:</span>
+                    <span className="text-emerald-400 font-semibold">Salted SHA-256 Verified</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Note or Resolution */}
+              {selectedDispute.resolution && (
+                <div className="p-4 bg-[#2DD4BF]/10 border border-[#2DD4BF]/20 rounded-xl text-xs text-on-surface flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-[#2DD4BF] shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-[#2DD4BF]">Resolution Details:</strong>
+                    <p className="m-0 mt-0.5 text-on-surface-variant">{selectedDispute.resolution}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedDispute.reason && (
+                <div className="p-4 bg-error/10 border border-error/20 rounded-xl text-xs text-on-surface flex items-start gap-2">
+                  <Info size={16} className="text-error shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-error">Audit Finding:</strong>
+                    <p className="m-0 mt-0.5 text-on-surface-variant">{selectedDispute.reason}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button 
+                  onClick={() => setIsDetailsModalOpen(false)}
+                  className="px-5 py-2.5 bg-primary text-on-primary font-bold text-xs rounded-xl hover:bg-primary-fixed-dim transition-all cursor-pointer shadow-md"
+                >
+                  Close Investigation Summary
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter by Type Popup Modal */}
+        {isTypeModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+                <h3 className="text-base font-bold text-on-surface m-0 flex items-center gap-2">
+                  <Filter size={18} className="text-primary" />
+                  Filter by Dispute Type
+                </h3>
+                <button onClick={() => setIsTypeModalOpen(false)} className="text-on-surface-variant hover:text-on-surface cursor-pointer">
+                  <XCircle size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: "All Types", val: "ALL" },
+                  { label: "Unauthorized Transaction", val: "Unauthorized" },
+                  { label: "Failed Transfer", val: "Failed" },
+                  { label: "Wrong Amount Debited", val: "Wrong Amount" },
+                  { label: "Card Fraud", val: "Card Fraud" },
+                ].map((opt) => (
+                  <button
+                    key={opt.val}
+                    onClick={() => {
+                      setSelectedType(opt.val);
+                      setIsTypeModalOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                      selectedType === opt.val
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container-high text-on-surface hover:bg-surface-highest"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {selectedType === opt.val && <CheckCircle2 size={14} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter by Date Popup Modal */}
+        {isDateModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface-container border border-outline-variant/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center justify-between border-b border-outline-variant/10 pb-3">
+                <h3 className="text-base font-bold text-on-surface m-0 flex items-center gap-2">
+                  <Calendar size={18} className="text-primary" />
+                  Filter by Date Range
+                </h3>
+                <button onClick={() => setIsDateModalOpen(false)} className="text-on-surface-variant hover:text-on-surface cursor-pointer">
+                  <XCircle size={18} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: "All Time", val: "ALL" },
+                  { label: "Last 7 Days", val: "LAST_7" },
+                  { label: "Last 30 Days", val: "LAST_30" },
+                  { label: "Year 2026", val: "2026" },
+                ].map((opt) => (
+                  <button
+                    key={opt.val}
+                    onClick={() => {
+                      setSelectedDateRange(opt.val);
+                      setIsDateModalOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                      selectedDateRange === opt.val
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container-high text-on-surface hover:bg-surface-highest"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {selectedDateRange === opt.val && <CheckCircle2 size={14} />}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
