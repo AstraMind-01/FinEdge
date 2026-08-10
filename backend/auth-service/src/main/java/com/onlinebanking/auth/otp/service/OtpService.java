@@ -17,6 +17,9 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
+import com.onlinebanking.auth.otp.notification.OtpNotificationService;
+import com.onlinebanking.auth.repository.UserRepository;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,8 @@ public class OtpService {
     private static final int MAX_ATTEMPTS = 3;
 
     private final OtpVerificationRepository otpRepository;
+    private final UserRepository userRepository;
+    private final OtpNotificationService otpNotificationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
@@ -90,11 +95,17 @@ public class OtpService {
 
         otpRepository.save(entity);
 
-        // Audit Logging & Internal Dispatch Signal (Simulated SMS/Email/Kafka dispatch)
+        // Fetch user email if registered or default to alex@finedge.com
+        String recipientEmail = userRepository.findByUsername(username)
+                .map(com.onlinebanking.auth.entity.User::getEmail)
+                .orElse("alex@finedge.com");
+
+        // Dispatch Email OTP via Notification Service (No plaintext OTP terminal log)
+        otpNotificationService.sendOtp(recipientEmail, username, request.getPurpose(), plaintextOtp);
+
         log.info("[AUDIT_OTP_GENERATED] VerificationToken: {} | User: {} | Purpose: {} | ExpiresAt: {}",
                 verificationToken, username, request.getPurpose(), expiresAt);
-        log.info("[OTP_NOTIFICATION_DISPATCH] Dispatching secure OTP to user {} for purpose {} (SMS/Email dispatched)",
-                username, request.getPurpose());
+        log.info("[OTP_EMAIL_SENT] OTP email sent successfully to {}", recipientEmail);
 
         return OtpResponse.builder()
                 .success(true)
