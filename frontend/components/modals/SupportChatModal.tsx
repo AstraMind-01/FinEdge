@@ -63,6 +63,11 @@ export default function SupportChatModal({ isOpen, onClose, initialQuestion, con
     setIsTyping(true);
 
     try {
+      const historyPayload = messages.slice(-6).map(m => ({
+        sender: m.sender,
+        text: m.text
+      }));
+
       const res = await fetch("/api/support/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,6 +77,7 @@ export default function SupportChatModal({ isOpen, onClose, initialQuestion, con
           userId: "usr_soumya_01",
           userName: "Soumya",
           contextPage: contextPage || "FinEdge Banking Platform",
+          history: historyPayload
         })
       });
 

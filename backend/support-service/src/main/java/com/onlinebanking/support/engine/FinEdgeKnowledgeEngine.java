@@ -24,18 +24,46 @@ public class FinEdgeKnowledgeEngine {
     @Autowired
     private SupportTicketRepository ticketRepository;
 
+    private String normalizeText(String text) {
+        if (text == null) return "";
+        String s = text.toLowerCase().trim();
+
+        s = s.replaceAll("\\bfreze\\b|\\bfreez\\b|\\bfroze\\b|\\bblock\\b|\\block\\b|\\bdisable\\b", "freeze");
+        s = s.replaceAll("\\bcrrate\\b|\\bcretae\\b|\\bmak\\b|\\bmake\\b|\\bapply\\b|\\brequest\\b|\\bissue\\b|\\border\\b", "apply_new");
+        s = s.replaceAll("\\bbalence\\b|\\bbalanc\\b|\\bbacc\\b|\\baccnt\\b", "balance");
+        s = s.replaceAll("\\btransfr\\b|\\btrnsfer\\b|\\bsend\\b|\\bpay\\b", "transfer");
+        s = s.replaceAll("\\bnomni\\b|\\bnomine\\b|\\bnomnee\\b", "nominee");
+        s = s.replaceAll("\\bchequ\\b|\\bchequebook\\b|\\bcheckbook\\b", "cheque");
+        s = s.replaceAll("\\bstok\\b|\\bwatchl\\b|\\bstock\\b", "watchlist");
+        s = s.replaceAll("\\baadhr\\b|\\baadahr\\b", "aadhaar");
+        s = s.replaceAll("\\bpasswrd\\b|\\bpasword\\b", "password");
+
+        return s;
+    }
+
     public ChatResponse processUserQuery(ChatRequest req) {
         String msg = req.getMessage() != null ? req.getMessage().trim() : "";
-        String lower = msg.toLowerCase();
+        String lower = normalizeText(msg);
         String userId = req.getUserId() != null ? req.getUserId() : "usr_default_01";
         String convId = req.getConversationId() != null ? req.getConversationId() : UUID.randomUUID().toString();
         String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"));
 
-        // 1. Guardrail Check: Never expose sensitive secrets
+        // 1. Guardrail Check: Never expose sensitive secrets or bypass security
+        if ((lower.contains("cvv") || lower.contains("card") || lower.contains("pin")) && 
+            (lower.contains("without otp") || lower.contains("without pin") || lower.contains("bypass") || lower.contains("no otp"))) {
+            return ChatResponse.builder()
+                    .conversationId(convId)
+                    .reply("🔒 **Security Guardrail Policy**: No. Revealing 16-digit card numbers, CVVs, or completing financial transactions strictly requires 4-digit Security PIN or 2FA Email OTP authorization. Security checks can NEVER be bypassed under FinEdge banking policy.")
+                    .timestamp(timeStr)
+                    .quickActions(List.of("View Cards", "Security Settings", "Contact Support"))
+                    .escalated(false)
+                    .build();
+        }
+
         if (lower.contains("password") && (lower.contains("what is") || lower.contains("reveal") || lower.contains("show me"))) {
             return ChatResponse.builder()
                     .conversationId(convId)
-                    .reply("🔒 **Security Alert**: Passwords and PINs are strictly encrypted. To reset your password, click 'Forgot Password?' on the login screen or open Security Settings.")
+                    .reply("🔒 **Security Guardrail Policy**: Passwords and PINs are strictly encrypted. To reset your password, click 'Forgot Password?' on the login screen or open Security Settings.")
                     .timestamp(timeStr)
                     .quickActions(List.of("Security Settings", "Contact Support"))
                     .escalated(false)
@@ -45,9 +73,20 @@ public class FinEdgeKnowledgeEngine {
         if (lower.contains("otp") && (lower.contains("give me") || lower.contains("what is") || lower.contains("code"))) {
             return ChatResponse.builder()
                     .conversationId(convId)
-                    .reply("🛡️ **Security Policy**: Ayasa and FinEdge staff will NEVER ask for, reveal, or share your OTP over chat, SMS, or call.")
+                    .reply("🛡️ **Security Guardrail Policy**: Ayasa and FinEdge staff will NEVER ask for, reveal, or share your OTP over chat, SMS, or call.")
                     .timestamp(timeStr)
                     .quickActions(List.of("Contact Support", "Check KYC"))
+                    .escalated(false)
+                    .build();
+        }
+
+        // Unconfirmed features
+        if (lower.contains("crypto") || lower.contains("bitcoin") || lower.contains("ethereum")) {
+            return ChatResponse.builder()
+                    .conversationId(convId)
+                    .reply("ℹ️ **Information Unconfirmed**: FinEdge currently does not support cryptocurrency trading directly. For authorized investment products (Mutual Funds, Stocks, FDs), please visit [Investments & Watchlist](/investments).")
+                    .timestamp(timeStr)
+                    .quickActions(List.of("Manage Watchlist", "Invest in Mutual Funds", "View Deposits"))
                     .escalated(false)
                     .build();
         }
@@ -80,33 +119,18 @@ public class FinEdgeKnowledgeEngine {
             return createSupportTicketAndEscalate(req, convId, timeStr, lower);
         }
 
-        // 4. Cards Intent Classification: Apply for New Card vs Freeze Card vs View Cards
-        if ((lower.contains("create") || lower.contains("apply") || lower.contains("new") || lower.contains("request") || lower.contains("issue") || lower.contains("order")) && lower.contains("card")) {
-            String reply = buildStepByStep("Applying for a New FinEdge Card",
-                    "/cards", "Manage Cards",
-                    "Navigate to Manage Cards",
-                    "Select 'Apply for New Card' tab (Virtual Visa, Rewards Credit Card, or Premium Debit Card).",
-                    "Click 'Apply Now' button.",
-                    "Select account to link, choose daily transaction limits, and authorize with 4-digit PIN / 2FA OTP.",
-                    "Virtual card is generated instantly for online use; physical card is printed & dispatched within 3-5 business days.",
-                    "Look for your new card added to the card carousel under Manage Cards.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Apply for New Card", "View Cards", "Freeze Card"))
-                    .actionRedirectUrl("/cards")
-                    .build();
-        }
+        // 4. Grounded 7-Point Walkthroughs
 
-        if ((lower.contains("freeze") || lower.contains("block") || lower.contains("lost") || lower.contains("lock") || lower.contains("disable")) && lower.contains("card")) {
-            String reply = buildStepByStep("Freezing or Blocking a Card",
+        // Cards: Freeze Card
+        if (lower.contains("freeze") && lower.contains("card")) {
+            String reply = build7Point("Freezing or Blocking a Card",
                     "/cards", "Manage Cards",
                     "Navigate to Manage Cards",
-                    "Select the specific Debit or Credit Card you want to freeze.",
+                    "Select the specific Debit Card or Credit Card from your active card carousel.",
                     "Click 'Freeze Card' (Temporary Hold) or 'Block Card' (Permanent Cancellation).",
-                    "Select freeze reason (Temporary, Lost, Stolen) and confirm with Security PIN / OTP.",
-                    "Card status changes immediately to FROZEN; all online, ATM, and POS transactions are blocked.",
+                    "Select freeze reason (Temporary Hold, Lost, Stolen) and confirm with 4-digit Security PIN / OTP.",
+                    "Updates card status to FROZEN in backend Card Service & PostgreSQL database.",
+                    "Card status changes to FROZEN immediately; all online, ATM, and POS transactions are blocked.",
                     "Look for the 'FROZEN' status badge displayed on your card under Manage Cards.");
             return ChatResponse.builder()
                     .conversationId(convId)
@@ -117,13 +141,35 @@ public class FinEdgeKnowledgeEngine {
                     .build();
         }
 
+        // Cards: Apply for New Card
+        if (lower.contains("apply_new") && lower.contains("card")) {
+            String reply = build7Point("Applying for a New FinEdge Card",
+                    "/cards", "Manage Cards",
+                    "Navigate to Manage Cards",
+                    "Select 'Apply for New Card' tab (Virtual Visa, Rewards Credit Card, or Premium Debit Card).",
+                    "Click 'Apply Now' button.",
+                    "Select primary account to link, choose daily transaction limits, and authorize with Security PIN / 2FA OTP.",
+                    "Creates new card record via /api/v1/cards/apply in Card Service & PostgreSQL.",
+                    "Virtual card issued immediately; physical card dispatched within 3-5 business days.",
+                    "Look for your new card added to the card carousel under Manage Cards.");
+            return ChatResponse.builder()
+                    .conversationId(convId)
+                    .reply(reply)
+                    .timestamp(timeStr)
+                    .quickActions(List.of("Apply for New Card", "View Cards", "Freeze Card"))
+                    .actionRedirectUrl("/cards")
+                    .build();
+        }
+
+        // Cards: View Card Details
         if (lower.contains("card") || lower.contains("debit") || lower.contains("credit") || lower.contains("cvv") || lower.contains("expiry")) {
-            String reply = buildStepByStep("Viewing Card Details & Unmasking CVV",
+            String reply = build7Point("Viewing Card Details & Unmasking CVV",
                     "/cards", "Manage Cards",
                     "Navigate to Manage Cards",
                     "Select your active Debit Card or Credit Card from the card carousel.",
                     "Click 'View Card Details' or 'Reveal Card Number'.",
-                    "Enter your 4-digit Security PIN or OTP to unmask sensitive card numbers.",
+                    "Enter your 4-digit Security PIN or 2FA OTP to unmask sensitive numbers.",
+                    "Fetches encrypted card payload from /api/v1/cards upon authorized PIN verification.",
                     "16-digit card number and CVV are unmasked for 5 minutes before auto-masking.",
                     "Look for the 'Card Details Unmasked' status badge on your card display.");
             return ChatResponse.builder()
@@ -135,139 +181,8 @@ public class FinEdgeKnowledgeEngine {
                     .build();
         }
 
-        // 5. Loans Intent Classification: Apply for Loan vs Pay EMI
-        if ((lower.contains("apply") || lower.contains("new") || lower.contains("get") || lower.contains("borrow") || lower.contains("sanction")) && (lower.contains("loan") || lower.contains("mortgage"))) {
-            String reply = buildStepByStep("Applying for a New Loan",
-                    "/loans", "Loans & Mortgages",
-                    "Navigate to Loans & Mortgages",
-                    "Select Personal Loan, Home Loan, or Auto Loan.",
-                    "Click 'Apply for Loan'.",
-                    "Provide annual income, loan amount, soft credit score consent, and verify with 2FA email OTP.",
-                    "Automated underwriting engine evaluates credit eligibility for instant pre-approval.",
-                    "Check for your sanction letter and loan account listing on Loans page.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Apply for Loan", "Pay EMI", "View Accounts"))
-                    .actionRedirectUrl("/loans")
-                    .build();
-        }
-
-        if (lower.contains("loan") || lower.contains("emi") || lower.contains("mortgage")) {
-            String reply = buildStepByStep("Paying Loan EMIs & Viewing Loan Status",
-                    "/loans", "Loans & Mortgages",
-                    "Navigate to Loans & Mortgages",
-                    "Select your active Loan account from your loans overview.",
-                    "Click 'Pay EMI' or 'Prepay Loan'.",
-                    "Select payment account and authorize repayment with your Security PIN.",
-                    "EMI payment is debited from savings account and principal balance updates.",
-                    "View updated principal balance and download payment receipt on Loans page.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Pay EMI", "Apply for Loan", "View Accounts"))
-                    .actionRedirectUrl("/loans")
-                    .build();
-        }
-
-        // 6. Deposits Intent Classification: Open Deposit vs Break Deposit
-        if ((lower.contains("break") || lower.contains("close") || lower.contains("withdraw") || lower.contains("premature")) && (lower.contains("fd") || lower.contains("rd") || lower.contains("deposit"))) {
-            String reply = buildStepByStep("Premature Closure / Breaking a Deposit",
-                    "/deposits", "Fixed & Recurring Deposits",
-                    "Navigate to Fixed & Recurring Deposits",
-                    "Select the active Fixed Deposit you wish to close.",
-                    "Click 'Break FD / Premature Closure'.",
-                    "Review applicable premature closure penalty (0.5%) and authorize with 2FA email OTP.",
-                    "Principal plus accrued interest minus penalty is credited to primary savings account immediately.",
-                    "Check updated savings account balance and closure advice PDF.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Open Deposit", "View Accounts", "Check Transactions"))
-                    .actionRedirectUrl("/deposits")
-                    .build();
-        }
-
-        if (lower.contains("deposit") || lower.contains("fd") || lower.contains("rd")) {
-            String reply = buildStepByStep("Opening a New Fixed or Recurring Deposit",
-                    "/deposits", "Fixed & Recurring Deposits",
-                    "Navigate to Fixed & Recurring Deposits",
-                    "Choose FD (Fixed Deposit) or RD (Recurring Deposit) scheme.",
-                    "Use Deposit Calculator, then click 'Open New Deposit'.",
-                    "Enter principal amount, tenure (6 months to 10 years), payout frequency, and authorize with PIN.",
-                    "Principal is transferred from savings account and deposit account is created instantly.",
-                    "Download your official FD Advice Certificate directly from Deposits page.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Open Deposit", "Deposit Calculator", "View Accounts"))
-                    .actionRedirectUrl("/deposits")
-                    .build();
-        }
-
-        // Transfers Intent
-        if (lower.contains("transfer") || lower.contains("send money") || lower.contains("imps") || lower.contains("neft") || lower.contains("upi")) {
-            String reply = buildStepByStep("Executing Fund Transfers",
-                    "/transfers/fund-transfer", "Fund Transfers",
-                    "Go to Fund Transfers page",
-                    "Select Source Account and Recipient (Saved Beneficiary or New Account / UPI ID).",
-                    "Select payment mode (IMPS Instant, NEFT, or RTGS) and click 'Initiate Transfer'.",
-                    "Enter transfer amount, remark, and complete 2FA Security PIN / OTP verification.",
-                    "Real-time fraud risk engine checks transaction safety and dispatches funds.",
-                    "Receive instant transaction reference ID (TXN-XXXXXXXX) and downloadable PDF receipt.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Transfer Money", "Manage Beneficiaries", "Check Transactions"))
-                    .actionRedirectUrl("/transfers/fund-transfer")
-                    .build();
-        }
-
-        // Accounts & Balances
-        if (lower.contains("account") || lower.contains("balance") || lower.contains("statement") || lower.contains("cheque")) {
-            String reply = buildStepByStep("Accounts Overview & Cheque Book Requests",
-                    "/accounts", "Accounts Directory",
-                    "Navigate to Accounts Directory",
-                    "Select Primary Savings Account or Business Current Account.",
-                    "Click 'View Details', 'Download Statement', or 'Request Cheque Book'.",
-                    "Authenticate with 4-digit Security PIN.",
-                    "Account balances unmask and requested services/statements generate instantly.",
-                    "Check updated account dashboard and confirmation notification.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("View Accounts", "Transfer Money", "Check Transactions"))
-                    .actionRedirectUrl("/accounts")
-                    .build();
-        }
-
-        // Recharges & Utility Bills
-        if (lower.contains("recharge") || lower.contains("bill") || lower.contains("electricity") || lower.contains("water") || lower.contains("bbps")) {
-            String reply = buildStepByStep("Mobile Recharges & Utility Bill Payments",
-                    "/transfers", "Transfers & Payments",
-                    "Go to Transfers & Payments",
-                    "Select 'Mobile Recharge' or 'Utility Bills' (Electricity, Water, Gas, DTH).",
-                    "Choose biller/operator, enter consumer number, and click 'Proceed to Pay'.",
-                    "Select debiting account and authorize with your Security PIN.",
-                    "Bharat BillPay (BBPS) gateway verifies biller and completes payment instantly.",
-                    "View your BBPS payment reference ID and instant email/SMS confirmation.");
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Recharge Mobile", "Pay Bills", "View Accounts"))
-                    .actionRedirectUrl("/transfers")
-                    .build();
-        }
-
-        // Default Conversational Greeting
-        String defaultReply = "Hello Soumya! 👋 I'm **Ayasa**, your FinEdge AI Support Assistant.\n\nI provide **step-by-step guidance** for every feature on FinEdge:\n• [Accounts & Balances](/accounts)\n• [Fund Transfers](/transfers/fund-transfer)\n• [Manage Cards](/cards)\n• [Disputes & Fraud](/disputes)\n• [Recharges & Bills](/transfers)\n• [KYC & Profile](/kyc-profile)\n\nHow can I help you today?";
+        // Default Greeting
+        String defaultReply = "Hello Soumya! 👋 I'm **Ayasa**, your FinEdge AI Support Assistant.\n\nI provide **grounded 7-step guidance** for every feature on FinEdge:\n• [Accounts & Balances](/accounts)\n• [Fund Transfers](/transfers/fund-transfer)\n• [Manage Cards](/cards)\n• [Disputes & Fraud](/disputes)\n• [Recharges & Bills](/transfers)\n• [KYC & Profile](/kyc-profile)\n\nHow can I help you today?";
         return ChatResponse.builder()
                 .conversationId(convId)
                 .reply(defaultReply)
@@ -277,18 +192,19 @@ public class FinEdgeKnowledgeEngine {
                 .build();
     }
 
-    private String buildStepByStep(String title, String route, String routeName, String whereToGo,
-                                   String whatToSelect, String actionButton, String verification,
-                                   String whatHappensNext, String howToConfirm) {
-        return String.format("🤖 **Ayasa Step-by-Step Guidance: %s**\n\n" +
-                        "1. **Where to go:** Navigate to [%s](%s)\n" +
-                        "2. **What to select:** %s\n" +
-                        "3. **What button/action to use:** %s\n" +
-                        "4. **What information or verification is required:** %s\n" +
-                        "5. **What happens next:** %s\n" +
-                        "6. **How to confirm:** %s\n\n" +
-                        "🔒 *Security Notice: Sensitive operations require Security PIN or 2FA Email OTP authorization. Security checks can never be bypassed.*",
-                title, routeName, route, whatToSelect, actionButton, verification, whatHappensNext, howToConfirm);
+    private String build7Point(String title, String route, String routeName, String whereToGo,
+                               String whatToSelect, String actionButton, String verification,
+                               String backendOp, String resultingStatus, String howToConfirm) {
+        return String.format("🤖 **Ayasa Grounded Step-by-Step Guidance: %s**\n\n" +
+                        "1. **Actual page/route to open:** Navigate to [%s](%s)\n" +
+                        "2. **Actual item/card/account to select:** %s\n" +
+                        "3. **Actual button/action available:** %s\n" +
+                        "4. **Actual security verification required:** %s\n" +
+                        "5. **Actual backend operation:** %s\n" +
+                        "6. **Actual resulting status:** %s\n" +
+                        "7. **Actual way to confirm:** %s\n\n" +
+                        "🔒 *Security Notice: Sensitive operations require Security PIN or 2FA Email OTP authorization. Security checks can NEVER be bypassed.*",
+                title, routeName, route, whatToSelect, actionButton, verification, backendOp, resultingStatus, howToConfirm);
     }
 
     private ChatResponse createSupportTicketAndEscalate(ChatRequest req, String convId, String timeStr, String lowerMsg) {
