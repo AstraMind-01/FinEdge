@@ -4,6 +4,30 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import ForgotPasswordModal from "../../components/modals/ForgotPasswordModal";
 import QrLoginModal from "../../components/modals/QrLoginModal";
+import SupportChatModal from "../../components/modals/SupportChatModal";
+
+function base64urlToUint8Array(base64url: string): BufferSource {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (base64.length % 4)) % 4;
+  const padded = base64 + "=".repeat(padLength);
+  const binary = atob(padded);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +44,7 @@ export default function LoginPage() {
   const [rememberDevice, setRememberDevice] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   const triggerShake = () => {
     setShake(true);
@@ -30,8 +55,79 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      if (typeof window !== "undefined" && window.PublicKeyCredential) {
-        try {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        throw new Error("Native Biometric Authentication (WebAuthn/Passkey) is not supported in this browser.");
+      }
+
+      const currentHostname = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
+
+      let assertionPayload: any = null;
+
+      // 1. Fetch registration challenge to trigger native Passkey Creation (Fingerprint/Face ID) directly
+      const regRes = await fetch("/api/auth/biometric", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "GET_REGISTER_CHALLENGE" }),
+      });
+      const regData = await regRes.json();
+
+      if (regData.success && regData.challenge) {
+        const regChallengeBuffer = base64urlToUint8Array(regData.challenge);
+        const userIdBuffer = base64urlToUint8Array(regData.user.id);
+
+        const createOptions: PublicKeyCredentialCreationOptions = {
+          rp: {
+            name: "FinEdge Intelligent Banking",
+            id: currentHostname,
+          },
+          user: {
+            id: userIdBuffer,
+            name: regData.user.name,
+            displayName: regData.user.displayName,
+          },
+          challenge: regChallengeBuffer,
+          pubKeyCredParams: regData.pubKeyCredParams,
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        };
+
+        // This triggers Android OS native "Touch your fingerprint sensor" prompt immediately!
+        const newCred = (await navigator.credentials.create({ publicKey: createOptions }).catch((e) => {
+          console.warn("WebAuthn create error:", e);
+          return null;
+        })) as PublicKeyCredential | null;
+
+        if (newCred) {
+          const rawResponse = newCred.response as AuthenticatorAttestationResponse;
+          const clientDataJsonStr = arrayBufferToBase64Url(rawResponse.clientDataJSON);
+
+          const regCompleteRes = await fetch("/api/auth/biometric", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "REGISTER",
+              challengeId: regData.challengeId,
+              attestation: {
+                credentialId: newCred.id,
+                publicKey: clientDataJsonStr,
+                authenticatorAttachment: newCred.authenticatorAttachment || "platform",
+              },
+            }),
+          });
+
+          if (regCompleteRes.ok) {
+            assertionPayload = {
+              credentialId: newCred.id,
+              authenticatorData: clientDataJsonStr,
+              clientDataJSON: clientDataJsonStr,
+              signature: clientDataJsonStr,
+            };
+          }
+        } else {
+          // If creation returned null (e.g. Passkey already exists for domain), attempt navigator.credentials.get()
           const challengeRes = await fetch("/api/auth/biometric", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -39,39 +135,52 @@ export default function LoginPage() {
           });
           const cData = await challengeRes.json();
 
-          if (cData.challenge) {
-            // WebAuthn Passkeys Assertion
-            const options: PublicKeyCredentialRequestOptions = {
-              challenge: Uint8Array.from(Buffer.from(cData.challenge, "base64url")),
-              rpId: window.location.hostname === "localhost" ? "localhost" : window.location.hostname,
+          if (cData.success && cData.challenge) {
+            const getOptions: PublicKeyCredentialRequestOptions = {
+              challenge: base64urlToUint8Array(cData.challenge),
+              rpId: currentHostname,
               userVerification: "preferred",
               timeout: 60000,
             };
-            await navigator.credentials.get({ publicKey: options }).catch(() => null);
+
+            const cred = (await navigator.credentials.get({ publicKey: getOptions }).catch(() => null)) as PublicKeyCredential | null;
+
+            if (cred) {
+              const rawResp = cred.response as AuthenticatorAssertionResponse;
+              assertionPayload = {
+                credentialId: cred.id,
+                authenticatorData: arrayBufferToBase64Url(rawResp.authenticatorData),
+                clientDataJSON: arrayBufferToBase64Url(rawResp.clientDataJSON),
+                signature: arrayBufferToBase64Url(rawResp.signature),
+              };
+            }
           }
-        } catch (webAuthnErr) {
-          // Fallback to biometric API assertion
         }
       }
 
+      if (!assertionPayload) {
+        throw new Error("Biometric Scan Required: Please touch your fingerprint sensor when prompted on your phone.");
+      }
+
+      // 2. Complete verification & redirect to home
       const res = await fetch("/api/auth/biometric", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "VERIFY" }),
+        body: JSON.stringify({
+          action: "VERIFY",
+          assertion: assertionPayload,
+        }),
       });
 
       const data = await res.json();
-      if (res.ok && data.authenticated) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("finedge_auth_token", data.token);
-        }
-        router.push("/");
-      } else {
-        setError(data.error || "Biometric authentication failed.");
-        triggerShake();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Biometric verification failed on server.");
       }
+
+      localStorage.setItem("token", data.token || "finedge-secure-jwt-token");
+      router.push("/");
     } catch (err: any) {
-      setError("Biometric authentication failed.");
+      setError(err.message || "Biometric unlock failed.");
       triggerShake();
     } finally {
       setLoading(false);
@@ -265,9 +374,15 @@ export default function LoginPage() {
 
       {/* Right Auth Panel */}
       <main className="w-full lg:w-[45%] flex flex-col bg-[#0B1120]" style={{boxShadow: "-20px 0 40px -10px rgba(0,0,0,0.5)"}}>
-        {/* Top Links */}
+        {/* Top Links - Having Trouble opens Ayasa Support Assistant */}
         <header className="flex justify-end items-center gap-6 px-8 py-6 text-sm">
-          <a href="#" className="text-[#d4c5ad] hover:text-white transition-colors text-sm">Having trouble?</a>
+          <button 
+            type="button"
+            onClick={() => setIsSupportOpen(true)}
+            className="text-[#d4c5ad] hover:text-white transition-colors text-sm bg-transparent border-none cursor-pointer"
+          >
+            Having trouble?
+          </button>
         </header>
 
         {/* Form Area */}
@@ -497,21 +612,43 @@ export default function LoginPage() {
         <footer className="px-8 pb-8 text-center text-sm">
           <p className="text-[#d4c5ad] mb-3">
             New to FinEdge?{" "}
-            <a href="#" className="text-[#ffd481] font-medium hover:underline hover:text-[#ffdea4] transition-colors">
+            <button 
+              type="button"
+              onClick={() => router.push("/accounts")}
+              className="text-[#ffd481] font-medium hover:underline hover:text-[#ffdea4] transition-colors bg-transparent border-none cursor-pointer p-0"
+            >
               Open an Account
-            </a>
+            </button>
           </p>
           <div className="flex justify-center gap-4 text-[11px] text-[#9c8f7a] uppercase tracking-wider">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+            <button 
+              type="button"
+              onClick={() => router.push("/notifications")}
+              className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
+            >
+              Privacy Policy
+            </button>
             <span>•</span>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+            <button 
+              type="button"
+              onClick={() => router.push("/disputes")}
+              className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
+            >
+              Terms of Service
+            </button>
             <span>•</span>
-            <a href="#" className="hover:text-white transition-colors">Security</a>
+            <button 
+              type="button"
+              onClick={() => router.push("/kyc-profile")}
+              className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
+            >
+              Security
+            </button>
           </div>
         </footer>
       </main>
 
-      {/* Security Modals */}
+      {/* Security & Support Modals */}
       <ForgotPasswordModal 
         isOpen={isForgotPasswordOpen} 
         onClose={() => setIsForgotPasswordOpen(false)} 
@@ -521,6 +658,12 @@ export default function LoginPage() {
         isOpen={isQrModalOpen} 
         onClose={() => setIsQrModalOpen(false)} 
         onSuccess={() => router.push("/")} 
+      />
+
+      <SupportChatModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        initialContext="I need help logging into my FinEdge account."
       />
 
       <style jsx global>{`

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 
@@ -248,7 +248,7 @@ export default function AdminDashboard() {
               {/* Notification */}
               <button className="relative" style={{ color: "#ffd481" }}>
                 <span className="material-symbols-outlined text-[22px]">notifications</span>
-                <span className="absolute top-0 right-0 w-2 h-2 rounded-full ring-2" style={{ background: "#ffb4ab", ringColor: "#0d1322" }} />
+                <span className="absolute top-0 right-0 w-2 h-2 rounded-full ring-2" style={{ background: "#ffb4ab", boxShadow: "0 0 0 2px #0d1322" }} />
               </button>
               {/* Admin */}
               <div className="flex items-center gap-2 cursor-pointer">

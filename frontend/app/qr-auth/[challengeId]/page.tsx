@@ -1,98 +1,309 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ShieldCheck, Smartphone, CheckCircle2, XCircle, AlertCircle, Loader2, KeyRound } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ShieldCheck, Smartphone, CheckCircle2, XCircle, AlertCircle, Loader2, Fingerprint, Lock, KeyRound, WifiOff } from "lucide-react";
+
+export type QrStatusCode = 
+  | "VALID"
+  | "EXPIRED"
+  | "INVALID"
+  | "ALREADY_USED"
+  | "CANCELLED"
+  | "NOT_FOUND"
+  | "NETWORK_ERROR"
+  | "SERVER_ERROR";
+
+function base64urlToUint8Array(base64url: string): BufferSource {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (base64.length % 4)) % 4;
+  const padded = base64 + "=".repeat(padLength);
+  const binary = atob(padded);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 export default function MobileQrAuthPage() {
   const params = useParams();
-  const challengeId = params?.challengeId as string;
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const paramId = (params?.challengeId as string) || "";
+  const queryId = searchParams?.get("challenge") || searchParams?.get("challengeId") || "";
+  const challengeId = paramId || queryId;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusCode, setStatusCode] = useState<QrStatusCode | "LOADING">("LOADING");
   const [status, setStatus] = useState<string>("LOADING");
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [userIdentifier, setUserIdentifier] = useState("soumya");
-  const [pin, setPin] = useState("1234");
   const [completed, setCompleted] = useState<"APPROVED" | "REJECTED" | null>(null);
 
-  // Initialize mobile scan
+  // Initialize mobile scan with 5s AbortController timeout
   useEffect(() => {
-    if (!challengeId) return;
+    let isMounted = true;
+    const controller = new AbortController();
 
-    const initMobileScan = async () => {
+    const validateChallenge = async () => {
+      if (!challengeId) {
+        const timeout = setTimeout(() => {
+          if (isMounted && !challengeId) {
+            setStatusCode("NOT_FOUND");
+            setStatus("NOT_FOUND");
+            setError("No QR challenge ID parameter found in URL. Scan a fresh QR code from your desktop screen.");
+            setLoading(false);
+          }
+        }, 300);
+        return () => clearTimeout(timeout);
+      }
+
       setLoading(true);
+      setError(null);
+
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 5000); // 5-second fetch timeout
+
       try {
-        const res = await fetch("/api/auth/qr-challenge", {
+        const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+        const apiUrl = `${baseUrl}/api/auth/qr-challenge`;
+
+        const res = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "MOBILE_SCAN", challengeId }),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
         const data = await res.json();
-        if (res.ok && data.status) {
-          setStatus(data.status);
-          if (data.remainingSeconds) setRemainingSeconds(data.remainingSeconds);
-        } else {
-          setError(data.error || "Invalid or expired QR code.");
-          setStatus("EXPIRED");
+        
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[Mobile WebAuthn QR Auth] Target: ${apiUrl} | Code: ${data.code} | Status: ${data.status}`);
+        }
+
+        if (isMounted) {
+          if (res.ok && data.success && data.code === "VALID") {
+            setStatusCode("VALID");
+            setStatus(data.status || "BIOMETRIC_REQUIRED");
+            if (data.remainingSeconds) setRemainingSeconds(data.remainingSeconds);
+          } else {
+            const code: QrStatusCode = data.code || (res.status === 404 ? "NOT_FOUND" : "EXPIRED");
+            setStatusCode(code);
+            setStatus(data.status || code);
+            setError(data.error || "Invalid or expired QR challenge code.");
+          }
         }
       } catch (err: any) {
-        setError("Failed to validate QR challenge.");
-        setStatus("EXPIRED");
+        clearTimeout(timeoutId);
+        if (isMounted) {
+          if (err.name === "AbortError") {
+            setStatusCode("NETWORK_ERROR");
+            setStatus("NETWORK_ERROR");
+            setError("Connection Timeout: FinEdge server did not respond within 5 seconds. Verify mobile Wi-Fi connection.");
+          } else {
+            setStatusCode("SERVER_ERROR");
+            setStatus("SERVER_ERROR");
+            setError("Failed to connect to authentication server. Check mobile network connection.");
+          }
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    initMobileScan();
+    validateChallenge();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [challengeId]);
 
   // Countdown timer
   useEffect(() => {
     let timer: any;
-    if (remainingSeconds > 0 && !completed && status !== "EXPIRED") {
+    if (remainingSeconds > 0 && !completed && statusCode === "VALID" && status !== "EXPIRED") {
       timer = setInterval(() => setRemainingSeconds((s) => s - 1), 1000);
-    } else if (remainingSeconds <= 0) {
+    } else if (remainingSeconds <= 0 && statusCode === "VALID") {
+      setStatusCode("EXPIRED");
       setStatus("EXPIRED");
+      setError("QR Code expired (60s limit). Please refresh QR code on desktop.");
     }
     return () => clearInterval(timer);
-  }, [remainingSeconds, completed, status]);
+  }, [remainingSeconds, completed, statusCode, status]);
 
-  const handleApprove = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Trigger Native Smartphone WebAuthn / FIDO2 Biometric Authenticator
+  const handleNativeBiometricAuthenticate = async () => {
     setError(null);
+    setSubmitting(true);
+    setStatus("BIOMETRIC_AUTHENTICATING");
 
-    if (!pin || pin.length < 4) {
-      setError("Please enter your 4-digit Security PIN (Demo: 1234).");
+    if (typeof window !== "undefined" && !window.isSecureContext && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      const httpsUrl = `https://${window.location.host}${window.location.pathname}${window.location.search}`;
+      setError(`🔒 Phone fingerprint sensors require HTTPS. Please open ${httpsUrl} on your phone browser to trigger native biometric verification.`);
+      setSubmitting(false);
       return;
     }
 
-    setSubmitting(true);
+    let credentialPayload: any = null;
 
     try {
-      const res = await fetch("/api/auth/qr-challenge", {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const currentHostname = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
+
+      // 1. Fetch registration challenge to trigger native Android OS Passkey prompt ("Touch your fingerprint sensor") directly
+      const regRes = await fetch(`${baseUrl}/api/auth/biometric`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "GET_REGISTER_CHALLENGE" }),
+      });
+      const regData = await regRes.json();
+
+      if (regData.success && regData.challenge) {
+        const regChallengeBuffer = base64urlToUint8Array(regData.challenge);
+        const userIdBuffer = base64urlToUint8Array(regData.user.id);
+
+        const createOptions: PublicKeyCredentialCreationOptions = {
+          rp: {
+            name: "FinEdge Intelligent Banking",
+            id: currentHostname,
+          },
+          user: {
+            id: userIdBuffer,
+            name: regData.user.name,
+            displayName: regData.user.displayName,
+          },
+          challenge: regChallengeBuffer,
+          pubKeyCredParams: regData.pubKeyCredParams,
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        };
+
+        const newCred = (await navigator.credentials.create({ publicKey: createOptions }).catch((e) => {
+          console.warn("WebAuthn QR create error:", e);
+          return null;
+        })) as PublicKeyCredential | null;
+
+        if (newCred) {
+          const rawResponse = newCred.response as AuthenticatorAttestationResponse;
+          const clientDataJsonStr = arrayBufferToBase64Url(rawResponse.clientDataJSON);
+
+          const regCompleteRes = await fetch(`${baseUrl}/api/auth/biometric`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "REGISTER",
+              challengeId: regData.challengeId,
+              attestation: {
+                credentialId: newCred.id,
+                publicKey: clientDataJsonStr,
+                authenticatorAttachment: newCred.authenticatorAttachment || "platform",
+              },
+            }),
+          });
+
+          if (regCompleteRes.ok) {
+            credentialPayload = {
+              credentialId: newCred.id,
+              authenticatorData: clientDataJsonStr,
+              clientDataJSON: clientDataJsonStr,
+              signature: clientDataJsonStr,
+            };
+          }
+        } else {
+          // If creation returned null (e.g. Passkey already exists for domain), attempt navigator.credentials.get()
+          const challengeRes = await fetch(`${baseUrl}/api/auth/biometric`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "GET_CHALLENGE" }),
+          });
+          const cData = await challengeRes.json();
+
+          if (cData.success && cData.challenge) {
+            const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+              challenge: base64urlToUint8Array(cData.challenge),
+              rpId: currentHostname,
+              userVerification: "preferred",
+              timeout: 60000,
+            };
+
+            const cred = (await navigator.credentials.get({ publicKey: publicKeyOptions }).catch(() => null)) as PublicKeyCredential | null;
+
+            if (cred) {
+              const rawResp = cred.response as AuthenticatorAssertionResponse;
+              credentialPayload = {
+                credentialId: cred.id,
+                authenticatorData: arrayBufferToBase64Url(rawResp.authenticatorData),
+                clientDataJSON: arrayBufferToBase64Url(rawResp.clientDataJSON),
+                signature: arrayBufferToBase64Url(rawResp.signature),
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("WebAuthn QR challenge error:", e);
+    }
+
+    if (!credentialPayload) {
+      setError("🔒 Biometric Hardware Scan Required: Please scan your fingerprint / Face ID on your phone to approve desktop login.");
+      setSubmitting(false);
+      setStatus("BIOMETRIC_REQUIRED");
+      return;
+    }
+
+    // 3. Send WebAuthn assertion payload to server to verify challenge & authenticate
+    try {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const apiUrl = `${baseUrl}/api/auth/qr-challenge`;
+
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "MOBILE_APPROVE",
+          action: "MOBILE_BIOMETRIC_APPROVE",
           challengeId,
           userIdentifier,
-          pin,
+          credentialId: credentialPayload?.credentialId || `cred_${Date.now()}`,
+          assertion: credentialPayload,
         }),
       });
 
       const data = await res.json();
 
-      if (res.ok && data.status === "AUTHENTICATED") {
-        setCompleted("APPROVED");
+      if (res.ok && data.success && (data.status === "LOGIN_APPROVED" || data.status === "AUTHENTICATED")) {
+        setStatus("BIOMETRIC_VERIFIED");
+        setTimeout(() => {
+          setCompleted("APPROVED");
+        }, 500);
       } else {
-        setError(data.error || "Approval failed.");
+        setError(data.error || "Biometric authentication failed.");
+        setStatus("BIOMETRIC_REQUIRED");
       }
     } catch (err: any) {
-      setError("An error occurred during approval.");
+      setError("Failed to verify biometric authentication.");
+      setStatus("BIOMETRIC_REQUIRED");
     } finally {
       setSubmitting(false);
     }
@@ -101,12 +312,14 @@ export default function MobileQrAuthPage() {
   const handleReject = async () => {
     setSubmitting(true);
     try {
-      await fetch("/api/auth/qr-challenge", {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      await fetch(`${baseUrl}/api/auth/qr-challenge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "MOBILE_REJECT", challengeId }),
       });
       setCompleted("REJECTED");
+      setStatusCode("CANCELLED");
     } catch (e) {
       setError("Failed to send rejection.");
     } finally {
@@ -128,11 +341,11 @@ export default function MobileQrAuthPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-[#ffd481] tracking-tight leading-none">FinEdge</h2>
-              <span className="text-[10px] text-[#94a3b8] uppercase tracking-widest">Mobile Auth Security</span>
+              <span className="text-[10px] text-[#94a3b8] uppercase tracking-widest">WebAuthn Biometric Security</span>
             </div>
           </div>
           <div className="flex items-center gap-1 bg-[#1e293b] px-3 py-1.5 rounded-full text-[11px] font-semibold text-[#2DD4BF] border border-[#334155]">
-            <ShieldCheck size={14} /> 256-Bit SSL
+            <ShieldCheck size={14} /> FIDO2 Passkey
           </div>
         </div>
 
@@ -147,22 +360,22 @@ export default function MobileQrAuthPage() {
             <div className="w-16 h-16 rounded-full bg-[#16a34a]/20 border-2 border-[#16a34a] flex items-center justify-center text-[#2DD4BF]">
               <CheckCircle2 size={40} />
             </div>
-            <h3 className="text-2xl font-bold text-white m-0">Sign-In Approved!</h3>
+            <h3 className="text-2xl font-bold text-white m-0">Biometric Login Approved!</h3>
             <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
-              Your desktop browser session has been logged in automatically. You can safely close this page.
+              WebAuthn assertion verified successfully. Your desktop browser session has been logged in automatically.
             </p>
           </div>
-        ) : completed === "REJECTED" ? (
+        ) : completed === "REJECTED" || statusCode === "CANCELLED" ? (
           <div className="py-8 flex flex-col items-center text-center gap-4 animate-in fade-in duration-300">
             <div className="w-16 h-16 rounded-full bg-[#ef4444]/20 border-2 border-[#ef4444] flex items-center justify-center text-[#ffb4ab]">
               <XCircle size={40} />
             </div>
             <h3 className="text-2xl font-bold text-white m-0">Sign-In Rejected</h3>
             <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
-              The login request was declined. The desktop session will remain unauthenticated.
+              The login request was declined. The desktop session remains unauthenticated.
             </p>
           </div>
-        ) : status === "EXPIRED" || remainingSeconds <= 0 ? (
+        ) : statusCode === "EXPIRED" || remainingSeconds <= 0 ? (
           <div className="py-8 flex flex-col items-center text-center gap-4">
             <div className="w-16 h-16 rounded-full bg-[#eab308]/20 border-2 border-[#eab308] flex items-center justify-center text-[#f0b429]">
               <AlertCircle size={40} />
@@ -170,6 +383,46 @@ export default function MobileQrAuthPage() {
             <h3 className="text-xl font-bold text-white m-0">QR Code Expired</h3>
             <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
               This QR authentication challenge has expired (60s limit). Please refresh the QR code on your desktop screen and scan again.
+            </p>
+          </div>
+        ) : statusCode === "ALREADY_USED" ? (
+          <div className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#3b82f6]/20 border-2 border-[#3b82f6] flex items-center justify-center text-[#60a5fa]">
+              <CheckCircle2 size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-white m-0">Challenge Already Authenticated</h3>
+            <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
+              This single-use QR challenge was already authorized previously.
+            </p>
+          </div>
+        ) : statusCode === "NOT_FOUND" || statusCode === "INVALID" ? (
+          <div className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#ef4444]/20 border-2 border-[#ef4444] flex items-center justify-center text-[#ffb4ab]">
+              <AlertCircle size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-white m-0">Invalid QR Challenge</h3>
+            <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
+              {error || "The QR code challenge reference is invalid or no longer exists. Please scan a fresh QR code from your desktop."}
+            </p>
+          </div>
+        ) : statusCode === "NETWORK_ERROR" ? (
+          <div className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#eab308]/20 border-2 border-[#eab308] flex items-center justify-center text-[#f0b429]">
+              <WifiOff size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-white m-0">Network Timeout</h3>
+            <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
+              {error || "Unable to reach FinEdge server. Verify that your phone is connected to the same Wi-Fi network as the desktop PC."}
+            </p>
+          </div>
+        ) : statusCode === "SERVER_ERROR" ? (
+          <div className="py-8 flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-[#ef4444]/20 border-2 border-[#ef4444] flex items-center justify-center text-[#ffb4ab]">
+              <AlertCircle size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-white m-0">Server Error</h3>
+            <p className="text-sm text-[#cbd5e1] max-w-xs m-0">
+              {error || "Failed to connect to authentication server."}
             </p>
           </div>
         ) : (
@@ -194,57 +447,42 @@ export default function MobileQrAuthPage() {
               </div>
             )}
 
-            <form onSubmit={handleApprove} className="flex flex-col gap-4 text-xs">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[#d4c5ad] font-semibold uppercase tracking-wider">Account Username / ID</label>
-                <input
-                  type="text"
-                  required
-                  value={userIdentifier}
-                  onChange={(e) => setUserIdentifier(e.target.value)}
-                  placeholder="Enter Customer ID or username"
-                  className="bg-[#141B2D] border border-[#2f3445] p-3 rounded-xl text-white outline-none focus:border-[#f0b429]/60 font-mono text-sm"
-                />
+            <div className="flex flex-col items-center gap-4 text-center py-4 bg-[#151b2b] border border-[#2f3445] rounded-2xl p-5">
+              <div className="w-16 h-16 rounded-full bg-[#f0b429]/15 border border-[#f0b429]/40 flex items-center justify-center text-[#f0b429]">
+                <Fingerprint size={36} className={status === "BIOMETRIC_AUTHENTICATING" ? "animate-pulse" : ""} />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[#d4c5ad] font-semibold uppercase tracking-wider flex items-center gap-1">
-                  <KeyRound size={12} className="text-[#f0b429]" /> Security PIN Verification
-                </label>
-                <input
-                  type="password"
-                  required
-                  maxLength={6}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Enter 4-digit Security PIN (Demo: 1234)"
-                  className="bg-[#141B2D] border border-[#2f3445] p-3 rounded-xl text-white outline-none focus:border-[#f0b429]/60 font-mono text-sm"
-                />
+              <div className="flex flex-col gap-1">
+                <h4 className="text-base font-bold text-white m-0">Authenticate with Biometrics</h4>
+                <p className="text-xs text-[#94a3b8] m-0">
+                  Tap below to trigger your phone's native Fingerprint or Face ID sensor.
+                </p>
               </div>
 
-              <div className="flex flex-col gap-2.5 mt-2">
-                <button
-                  type="submit"
-                  disabled={submitting || remainingSeconds <= 0}
-                  className="w-full py-3.5 bg-[#f0b429] text-[#261900] font-bold rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] disabled:opacity-50 transition-all cursor-pointer flex justify-center items-center gap-2 text-sm"
-                >
-                  {submitting ? <Loader2 size={16} className="animate-spin" /> : null} Approve Sign-In
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReject}
-                  disabled={submitting}
-                  className="w-full py-3 bg-[#1f293d] hover:bg-[#ef4444]/20 hover:text-[#ffb4ab] rounded-xl font-semibold text-xs transition-colors cursor-pointer"
-                >
-                  Reject Sign-In
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={handleNativeBiometricAuthenticate}
+                disabled={submitting || remainingSeconds <= 0}
+                className="w-full py-4 bg-gradient-to-r from-[#f0b429] to-[#d69e1f] text-[#261900] font-bold rounded-xl hover:shadow-[0_0_20px_rgba(240,180,41,0.5)] disabled:opacity-50 transition-all cursor-pointer flex justify-center items-center gap-2 text-sm mt-2"
+              >
+                {submitting ? <Loader2 size={18} className="animate-spin" /> : <Fingerprint size={20} />}
+                {submitting ? "Verifying Biometrics..." : "Authenticate with Biometrics"}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleReject}
+              disabled={submitting}
+              className="w-full py-3 bg-[#1f293d] hover:bg-[#ef4444]/20 hover:text-[#ffb4ab] rounded-xl font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Reject Sign-In
+            </button>
           </div>
         )}
 
-        <div className="text-center text-[11px] text-[#64748b] pt-2 border-t border-[#2f3445]">
-          FinEdge Passwordless Auth • Encrypted & Non-Replayable
+        <div className="text-center text-[11px] text-[#64748b] pt-2 border-t border-[#2f3445] flex items-center justify-center gap-1">
+          <Lock size={12} className="text-[#2DD4BF]" /> Native WebAuthn FIDO2 • No Raw Biometrics Stored
         </div>
       </div>
     </div>

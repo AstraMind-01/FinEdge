@@ -8,6 +8,7 @@ interface SupportChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialQuestion?: string;
+  initialContext?: string;
   contextPage?: string;
 }
 
@@ -20,7 +21,7 @@ interface ChatMessage {
   actionRedirectUrl?: string;
 }
 
-export default function SupportChatModal({ isOpen, onClose, initialQuestion, contextPage }: SupportChatModalProps) {
+export default function SupportChatModal({ isOpen, onClose, initialQuestion, initialContext, contextPage }: SupportChatModalProps) {
   const router = useRouter();
   const [conversationId] = useState(() => `conv-${Date.now()}`);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -37,14 +38,15 @@ export default function SupportChatModal({ isOpen, onClose, initialQuestion, con
   const initialQuestionSentRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isOpen && initialQuestion && initialQuestionSentRef.current !== initialQuestion) {
-      initialQuestionSentRef.current = initialQuestion;
+    const queryToSend = initialContext || initialQuestion;
+    if (isOpen && queryToSend && initialQuestionSentRef.current !== queryToSend) {
+      initialQuestionSentRef.current = queryToSend;
       const timer = setTimeout(() => {
-        sendMessage(initialQuestion);
+        sendMessage(queryToSend);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, initialQuestion]);
+  }, [isOpen, initialQuestion, initialContext]);
 
   if (!isOpen) return null;
 
