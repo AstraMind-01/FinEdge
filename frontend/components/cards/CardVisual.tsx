@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { BankCard } from '../../types';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, Lock, Snowflake, ShieldAlert } from 'lucide-react';
 
 interface CardVisualProps {
   card: BankCard;
@@ -113,8 +113,33 @@ export default function CardVisual({
         {/* ==================== FRONT FACE ==================== */}
         <div 
           className={`absolute inset-0 w-full h-full rounded-2xl p-6 flex flex-col justify-between overflow-hidden ${bgClass}`}
-          style={{ backfaceVisibility: 'hidden' }}
+          style={{ 
+            WebkitBackfaceVisibility: 'hidden',
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(0deg)'
+          }}
         >
+          {/* Frozen / Blocked Overlay */}
+          {(card.status === 'FROZEN' || card.status === 'BLOCKED') && (
+            <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-[3px] rounded-2xl flex flex-col items-center justify-center gap-2 text-center p-4 border border-cyan-500/30 animate-in fade-in duration-200">
+              <div className={`p-3 rounded-full border ${
+                card.status === 'BLOCKED' 
+                  ? 'bg-red-500/20 text-red-400 border-red-500/40' 
+                  : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+              }`}>
+                {card.status === 'BLOCKED' ? <Lock size={24} /> : <Snowflake size={24} className="animate-spin" />}
+              </div>
+              <span className={`text-xs font-bold tracking-widest uppercase font-mono px-3 py-1 rounded-full border ${
+                card.status === 'BLOCKED' 
+                  ? 'bg-red-500/10 text-red-400 border-red-500/30' 
+                  : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+              }`}>
+                {card.status === 'BLOCKED' ? 'CARD BLOCKED' : 'CARD FROZEN'}
+              </span>
+              <p className="text-[10px] text-slate-400 m-0">Transactions Temporarily Restricted</p>
+            </div>
+          )}
+
           {/* Glossy Overlay */}
           <div className="absolute inset-0 bg-gradient-to-tr from-white/5 via-white/10 to-transparent opacity-40 pointer-events-none z-10"></div>
           
@@ -208,6 +233,7 @@ export default function CardVisual({
           <div 
             className={`absolute inset-0 w-full h-full rounded-2xl flex flex-col justify-between overflow-hidden border border-white/10 ${bgClass}`}
             style={{ 
+              WebkitBackfaceVisibility: 'hidden',
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)'
             }}

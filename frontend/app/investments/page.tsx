@@ -8,7 +8,9 @@ import { MockApi } from '../../lib/mockApi';
 import { Plus, Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, BarChart3, Target, Eye, PlusCircle, Pause, Play, Edit3, ChevronUp, X, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AccountProvider } from '../../context/AccountContext';
+import { WatchlistProvider, useWatchlist } from '../../context/WatchlistContext';
 import FullInvestmentModal from '../../components/modals/FullInvestmentModal';
+import EditWatchlistModal from '../../components/modals/EditWatchlistModal';
 
 const portfolioRangeData: Record<string, PortfolioDataPoint[]> = {
   "1M": [
@@ -47,7 +49,8 @@ const portfolioRangeData: Record<string, PortfolioDataPoint[]> = {
   ]
 };
 
-export default function InvestmentsPage() {
+function InvestmentsContent() {
+  const { watchlistItems, toggleWatchlist, isEditModalOpen, setIsEditModalOpen } = useWatchlist();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [sips, setSips] = useState<SIP[]>([]);
   const [goals, setGoals] = useState<InvestmentGoal[]>([]);
@@ -189,7 +192,7 @@ export default function InvestmentsPage() {
       <AccountProvider>
         <div className="flex min-h-screen bg-background">
           <Sidebar />
-          <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen">
+          <div className="flex-1 lg:pl-[230px] w-full min-w-0 flex flex-col min-h-screen">
             <Header />
             <div className="flex-1 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -239,18 +242,11 @@ export default function InvestmentsPage() {
     .sort((a, b) => (b.returnPercent ?? (b.currentValue - b.investedAmount)) - (a.returnPercent ?? (a.currentValue - a.investedAmount)))
     .slice(0, 3);
 
-  // Watchlist
-  const watchlist = [
-    { name: "Tata Motors", price: "₹812.40", change: "+2.3%" },
-    { name: "HDFC Flexi Cap Fund", price: "NAV ₹42.15", change: "+1.1%" },
-    { name: "Infosys", price: "₹1,542.60", change: "-0.4%" },
-  ];
-
   return (
     <AccountProvider>
       <div className="flex min-h-screen bg-background text-on-surface relative">
         <Sidebar />
-        <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
+        <div className="flex-1 lg:pl-[230px] w-full min-w-0 max-w-full flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden">
           <Header />
           
           <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">
@@ -525,19 +521,35 @@ export default function InvestmentsPage() {
                     <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                       <Eye size={16} className="text-primary" /> Watchlist
                     </h3>
-                    <button type="button" onClick={() => triggerToast("Watchlist editor opened")} className="text-xs text-primary font-semibold hover:underline">Edit</button>
+                    <button type="button" onClick={() => setIsEditModalOpen(true)} className="text-xs text-primary font-semibold hover:underline cursor-pointer">Edit</button>
                   </div>
                   <div className="space-y-3">
-                    {watchlist.map((w, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-surface-container border border-white/5">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-on-surface text-xs font-bold">{w.name}</p>
-                          <p className="text-on-surface-variant text-[11px] font-mono">{w.price}</p>
+                    {watchlistItems.map((w, i) => {
+                      const priceStr = w.marketData?.formattedPrice || w.price || "₹500.00";
+                      const changeStr = w.marketData?.formattedChange || w.change || "+0.0%";
+                      const isPos = w.marketData?.isPositive ?? !changeStr.startsWith("-");
+
+                      return (
+                        <div key={w.instrumentId || i} className="flex items-center gap-3 p-3 rounded-xl bg-surface-container border border-white/5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-on-surface text-xs font-bold">{w.instrumentName}</p>
+                            <p className="text-on-surface-variant text-[11px] font-mono">{priceStr}</p>
+                          </div>
+                          <span className={`text-xs font-bold font-mono ${isPos ? 'text-green-400' : 'text-red-400'}`}>{changeStr}</span>
+                          <button 
+                            type="button" 
+                            onClick={async () => {
+                              await toggleWatchlist(w);
+                              triggerToast(`Updated ${w.instrumentName} in watchlist`);
+                            }} 
+                            className="text-primary hover:scale-110 transition-transform cursor-pointer"
+                            title="Toggle Watchlist"
+                          >
+                            <PlusCircle size={16} />
+                          </button>
                         </div>
-                        <span className={`text-xs font-bold font-mono ${w.change.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>{w.change}</span>
-                        <button type="button" onClick={() => triggerToast(`Added ${w.name} to watch alert`)} className="text-primary hover:scale-110 transition-transform"><PlusCircle size={16} /></button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -849,7 +861,21 @@ export default function InvestmentsPage() {
           </div>
         )}
 
+        {/* Edit Watchlist Modal */}
+        <EditWatchlistModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+
       </div>
     </AccountProvider>
+  );
+}
+
+export default function InvestmentsPage() {
+  return (
+    <WatchlistProvider>
+      <InvestmentsContent />
+    </WatchlistProvider>
   );
 }

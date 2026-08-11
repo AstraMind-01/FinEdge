@@ -200,7 +200,7 @@ export default function LoansPage() {
       <AccountProvider>
         <div className="flex min-h-screen bg-background">
           <Sidebar />
-          <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen">
+          <div className="flex-1 lg:pl-[230px] w-full min-w-0 flex flex-col min-h-screen">
             <Header />
             <div className="flex-1 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -215,7 +215,7 @@ export default function LoansPage() {
     <AccountProvider>
       <div className="flex min-h-screen bg-background text-on-surface relative">
         <Sidebar />
-        <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
+        <div className="flex-1 lg:pl-[230px] w-full min-w-0 max-w-full flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden">
           <Header />
 
           <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">

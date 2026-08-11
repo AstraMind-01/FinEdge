@@ -13,9 +13,13 @@ interface AccountDetailsModalProps {
 }
 
 export default function AccountDetailsModal({ account, isOpen, onClose, isVerified: propIsVerified }: AccountDetailsModalProps) {
-  const { isAccountVerified, getAccountSessionRemainingTime, requestVerification, verificationStates } = useAccounts();
+  const { isAccountVerified, getAccountSessionRemainingTime, requestVerification, verifyAccountWithPin, verificationStates } = useAccounts();
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [remSeconds, setRemSeconds] = useState<number>(0);
+  const [showAuthBox, setShowAuthBox] = useState<boolean>(true);
+  const [mpin, setMpin] = useState<string>("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin] = useState<boolean>(false);
 
   const accountId = account?.id || "";
   const isVerified = Boolean(
@@ -38,6 +42,27 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
   }, [isOpen, accountId, getAccountSessionRemainingTime]);
 
   if (!isOpen || !account) return null;
+
+  const handleInlineVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountId) return;
+    setIsVerifyingPin(true);
+    setPinError(null);
+
+    const res = await verifyAccountWithPin(accountId, mpin);
+    setIsVerifyingPin(false);
+    if (res.success) {
+      setMpin("");
+      setShowAuthBox(false);
+    } else {
+      setPinError(res.error || "Incorrect Security PIN. Demo PIN is 1234.");
+    }
+  };
+
+  const triggerAuth = () => {
+    setShowAuthBox(true);
+    requestVerification(accountId);
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     if (!isVerified) return;
@@ -94,7 +119,7 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
             </div>
           ) : (
             <button 
-              onClick={() => requestVerification(accountId)}
+              onClick={triggerAuth}
               className="flex items-center gap-2 text-xs bg-error/10 border border-error/30 text-error hover:bg-error/20 px-3.5 py-1.5 rounded-lg font-medium cursor-pointer transition-all hover:scale-[1.02]"
               title="Click to Authenticate Account"
             >
@@ -104,10 +129,53 @@ export default function AccountDetailsModal({ account, isOpen, onClose, isVerifi
           )}
         </div>
 
+        {/* Inline PIN Authentication Form */}
+        {!isVerified && showAuthBox && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex flex-col gap-3 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-primary" />
+                <h4 className="text-sm font-bold text-on-surface m-0">Enter 4-Digit Security PIN / MPIN</h4>
+              </div>
+              <span className="text-[11px] text-on-surface-variant font-mono">Demo PIN: <strong className="text-primary">1234</strong></span>
+            </div>
+
+            {pinError && (
+              <div className="p-2.5 bg-error/10 border border-error/20 text-error rounded-xl text-xs flex items-center gap-2 font-medium">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{pinError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleInlineVerify} className="flex flex-col sm:flex-row items-center gap-3">
+              <input 
+                type="password"
+                maxLength={4}
+                autoFocus
+                placeholder="••••"
+                value={mpin}
+                onChange={(e) => {
+                  setMpin(e.target.value.replace(/\D/g, ""));
+                  if (pinError) setPinError(null);
+                }}
+                className="bg-surface border border-outline-variant/30 rounded-xl p-3 text-center text-lg font-mono font-bold tracking-[0.3em] text-on-surface focus:outline-none focus:border-primary w-full sm:w-44"
+              />
+              <button
+                type="submit"
+                disabled={isVerifyingPin || mpin.length < 4}
+                className="px-6 py-3 bg-primary text-on-primary font-bold text-xs rounded-xl hover:bg-primary-fixed-dim transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50"
+              >
+                {isVerifyingPin ? <Lock size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                <span>{isVerifyingPin ? "Authenticating..." : "Authorize & View Specs"}</span>
+              </button>
+            </form>
+          </div>
+        )}
+
         {/* Detail Fields Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div 
-            onClick={() => !isVerified && requestVerification(accountId)}
+            onClick={() => !isVerified && triggerAuth()}
             className={`bg-surface-high/40 p-3.5 rounded-xl border border-outline-variant/10 flex flex-col justify-between ${!isVerified ? 'cursor-pointer hover:border-primary/30 transition-all' : ''}`}
           >
             <span className="text-xs text-on-surface-variant flex items-center gap-1.5 uppercase tracking-wider font-medium">

@@ -68,6 +68,18 @@ spring:
           predicates:
             - Path=/api/v1/accounts/**
 
+        # ── Watchlist Service ─────────────────────────────────────────
+        - id: watchlist-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/watchlist/**
+
+        # ── Market Data Service ───────────────────────────────────────
+        - id: market-data-service
+          uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/market-data/**
+
         # ── Transaction Service ───────────────────────────────────────
         # Two route entries: /me/transactions and /transactions/**
         # Both forward to the same service, which has @RequestMapping("/api/v1")
@@ -94,15 +106,16 @@ spring:
             - Path=/api/v1/audit-logs/**
 
         # ── Fraud Detection Service ───────────────────────────────────
-        # Normally called service-to-service by transaction-service,
-        # but exposed here for admin/debug access and viva demo.
-        # The fraud-detection-service validates JWTs independently,
-        # so unauthorized external access is already blocked.
-        # A production system would restrict this to admin roles.
         - id: fraud-detection-service
           uri: ${FRAUD_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/v1/fraud/**
+
+        # ── Support Service ───────────────────────────────────────────
+        - id: support-service
+          uri: ${SUPPORT_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/v1/support/**
 
       # ── Default filters (applied to ALL routes) ─────────────────────
       default-filters:

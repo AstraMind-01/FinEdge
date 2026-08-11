@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   BellRing, CheckCircle2, AlertTriangle, Info, Gift, 
   ShieldAlert, UserCheck, Banknote, CreditCard, Send, MoreVertical, Check
@@ -16,6 +17,8 @@ export interface Notification {
     label: string;
     onClick: () => void;
   };
+  actionLink?: string;
+  actionLabel?: string;
 }
 
 interface NotificationsListProps {
@@ -45,6 +48,8 @@ const getIconBgForType = (type: string) => {
 };
 
 export default function NotificationsList({ notifications, onMarkAsRead, onDelete }: NotificationsListProps) {
+  const router = useRouter();
+
   const groupedNotifications = notifications.reduce((acc, notification) => {
     if (!acc[notification.dateGroup]) {
       acc[notification.dateGroup] = [];
@@ -106,13 +111,19 @@ export default function NotificationsList({ notifications, onMarkAsRead, onDelet
                       {notification.description}
                     </p>
                     
-                    {notification.action && (
+                    {(notification.action || notification.actionLink) && (
                       <div className="mt-3">
                         <button 
-                          onClick={notification.action.onClick}
+                          onClick={() => {
+                            if (notification.actionLink) {
+                              router.push(notification.actionLink);
+                            } else if (notification.action) {
+                              notification.action.onClick();
+                            }
+                          }}
                           className="px-4 py-2 bg-primary text-on-primary text-[13px] font-semibold rounded-lg shadow-[0_0_15px_rgba(240,180,41,0.2)] hover:shadow-[0_0_20px_rgba(240,180,41,0.4)] transition-all inline-flex items-center"
                         >
-                          {notification.action.label}
+                          {notification.actionLabel || notification.action?.label}
                         </button>
                       </div>
                     )}
@@ -134,9 +145,19 @@ export default function NotificationsList({ notifications, onMarkAsRead, onDelet
                         <Check size={16} />
                       </button>
                     )}
-                    <button className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                      <MoreVertical size={16} />
-                    </button>
+                    <div className="relative group/more">
+                      <button className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-all opacity-0 group-[.group]:hover:opacity-100 group/more-focus:opacity-100">
+                        <MoreVertical size={16} />
+                      </button>
+                      <div className="absolute right-0 top-full mt-1 hidden group-hover/more:block z-10 bg-surface-container-high border border-white/10 rounded-lg shadow-lg w-28 overflow-hidden">
+                        <button 
+                          onClick={() => onDelete(notification.id)}
+                          className="w-full text-left px-3 py-2 text-[13px] text-error hover:bg-error/10 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -11,7 +11,7 @@ import { CardStatementBuilder } from '../../lib/pdf/documents/CardStatement';
 
 interface CardDetailsPanelProps {
   card: BankCard;
-  onStatusToggle: (status: "ACTIVE" | "FROZEN") => void;
+  onStatusToggle: (status: "ACTIVE" | "FROZEN" | "BLOCKED") => void;
 }
 
 export default function CardDetailsPanel({ card, onStatusToggle }: CardDetailsPanelProps) {
@@ -98,7 +98,7 @@ export default function CardDetailsPanel({ card, onStatusToggle }: CardDetailsPa
   };
 
   const handleConfirmReportLost = () => {
-    onStatusToggle("FROZEN");
+    onStatusToggle("BLOCKED");
     setReportSuccess(true);
     setTimeout(() => {
       setReportSuccess(false);

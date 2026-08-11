@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Account, Transaction } from "../../types";
 import { X, Globe, Download, FileText, Calendar, Printer, CheckCircle2 } from "lucide-react";
 
-import { AccountStatementBuilder } from "../../lib/pdf/documents/AccountStatement";
+import { generateAndDownloadCentralPDF } from "../../lib/pdfService";
 
 interface AccountStatementsModalProps {
   account: Account | null;
@@ -32,15 +32,15 @@ export default function AccountStatementsModal({ account, transactions, isOpen, 
         ).join("\n");
         blob = new Blob([headers + rows], { type: "text/csv" });
       } else {
-        // We try to get the account holder name
-        const customerName = account && 'accountHolder' in account && typeof (account as any).accountHolder === 'string' 
-          ? (account as any).accountHolder 
-          : 'FinEdge Customer';
-
         const periodStr = period === 'all' ? 'All Time' : `Last ${period} Days`;
-        
-        AccountStatementBuilder.generate(account, customerName, transactions, periodStr);
-        blob = new Blob(); // Dummy blob to not break the rest of the flow for CSV
+        generateAndDownloadCentralPDF({
+          documentType: 'ACCOUNT_STATEMENT',
+          account: account,
+          transactions: transactions,
+          period: periodStr,
+          format: 'PDF',
+        });
+        blob = new Blob();
       }
 
       if (fileFormat === "csv") {

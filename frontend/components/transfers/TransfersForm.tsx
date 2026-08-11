@@ -6,8 +6,10 @@ import { Button } from '../ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import { MockApi } from '../../lib/mockApi';
 import { Account, Beneficiary } from '../../types';
+import { useAccounts } from '../../context/AccountContext';
 
 export default function TransfersForm() {
+  const { isAccountVerified } = useAccounts();
   const [activeTab, setActiveTab] = useState("Other Bank Account");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -38,7 +40,7 @@ export default function TransfersForm() {
   ];
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val);
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(val);
   };
 
   const numericAmount = parseFloat(amount) || 0;
@@ -82,7 +84,9 @@ export default function TransfersForm() {
                       <span className="font-medium text-[14px]">{acc.name}</span>
                       <span className="text-[12px] text-on-surface-variant font-mono">{acc.maskedNumber}</span>
                     </div>
-                    <span className="font-bold text-[14px] text-tertiary pl-4">{formatCurrency(acc.balance)}</span>
+                    <span className="font-bold text-[14px] text-tertiary pl-4">
+                      {isAccountVerified(acc.id) ? formatCurrency(acc.balance) : "••••••••"}
+                    </span>
                   </div>
                 </SelectItem>
               ))}

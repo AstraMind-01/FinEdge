@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Account } from "../../types";
 import { X, TrendingUp, CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { useAccounts } from "../../context/AccountContext";
 
 interface MutualFundsModalProps {
   accounts: Account[];
@@ -19,6 +20,7 @@ const TOP_FUNDS = [
 ];
 
 export default function MutualFundsModal({ accounts, isOpen, onClose, onInvest }: MutualFundsModalProps) {
+  const { isAccountVerified } = useAccounts();
   const activeAccounts = accounts.filter(a => a.type === "SAVINGS" || a.type === "CURRENT");
   const [selectedFund, setSelectedFund] = useState(TOP_FUNDS[0]);
   const [isSip, setIsSip] = useState(true);
@@ -154,7 +156,7 @@ export default function MutualFundsModal({ accounts, isOpen, onClose, onInvest }
             >
               {activeAccounts.map(acc => (
                 <option key={acc.id} value={acc.id} className="bg-[#191f2f] text-[#dde2f8]">
-                  {acc.name} ({acc.maskedNumber}) - {formatCurrency(acc.balance)}
+                  {acc.name} ({acc.maskedNumber}) {isAccountVerified(acc.id) ? `- ${formatCurrency(acc.balance)}` : ''}
                 </option>
               ))}
             </select>

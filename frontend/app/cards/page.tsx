@@ -8,6 +8,7 @@ import CardDetailsPanel from '../../components/cards/CardDetailsPanel';
 import CardControlsTabs from '../../components/cards/CardControlsTabs';
 import CardsRightSidebar from '../../components/cards/CardsRightSidebar';
 import AvailableCardTypes from '../../components/cards/AvailableCardTypes';
+import ApplyCardModal from '../../components/modals/ApplyCardModal';
 import { BankCard, CardOffer, CardControls } from '../../types';
 import { MockApi } from '../../lib/mockApi';
 
@@ -18,6 +19,7 @@ export default function CardsPage() {
   const [offers, setOffers] = useState<CardOffer[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,12 +43,18 @@ export default function CardsPage() {
     fetchData();
   }, []);
 
-  const handleStatusToggle = (newStatus: "ACTIVE" | "FROZEN") => {
+  const handleStatusToggle = async (newStatus: "ACTIVE" | "FROZEN" | "BLOCKED") => {
+    if (!selectedCardId) return;
     setCards(prevCards => 
       prevCards.map(c => 
         c.id === selectedCardId ? { ...c, status: newStatus } : c
       )
     );
+    try {
+      await MockApi.updateCardStatus(selectedCardId, newStatus);
+    } catch (err) {
+      console.error("Error updating card status in MockApi:", err);
+    }
   };
 
   const handleUpdateControls = (newControls: CardControls) => {
@@ -62,7 +70,7 @@ export default function CardsPage() {
       <AccountProvider>
         <div className="flex min-h-screen bg-background">
           <Sidebar />
-          <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen">
+          <div className="flex-1 lg:pl-[230px] w-full min-w-0 flex flex-col min-h-screen">
             <Header />
             <div className="flex-1 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -73,17 +81,31 @@ export default function CardsPage() {
     );
   }
 
+  const handleCardSubmitted = async (newCard?: BankCard) => {
+    try {
+      const updatedCards = await MockApi.getCards();
+      setCards(updatedCards);
+      if (newCard) {
+        setSelectedCardId(newCard.id);
+      } else if (updatedCards.length > 0) {
+        setSelectedCardId(updatedCards[0].id);
+      }
+    } catch (e) {
+      console.error("Error refreshing cards list:", e);
+    }
+  };
+
   const selectedCard = cards.find(c => c.id === selectedCardId);
 
   return (
     <AccountProvider>
       <div className="flex min-h-screen bg-background text-on-surface">
         <Sidebar />
-        <div className="flex-1 lg:ml-[230px] flex flex-col min-h-screen transition-all duration-300">
+        <div className="flex-1 lg:pl-[230px] w-full min-w-0 max-w-full flex flex-col min-h-screen transition-all duration-300 overflow-x-hidden">
           <Header />
           
           <main className="flex-1 p-4 md:p-8 mt-[72px] overflow-y-auto max-w-[1400px] mx-auto w-full">
-            <CardsHeader />
+            <CardsHeader onApplyClick={() => setIsApplyModalOpen(true)} />
             
             {cards.length > 0 && selectedCard ? (
               <>
@@ -120,6 +142,12 @@ export default function CardsPage() {
             )}
 
             <AvailableCardTypes />
+
+            <ApplyCardModal
+              isOpen={isApplyModalOpen}
+              onClose={() => setIsApplyModalOpen(false)}
+              onCardSubmitted={handleCardSubmitted}
+            />
           </main>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Account, Transaction, VerificationState, UserProfile, VaultDocument } f
 import { MockApi } from "../lib/mockApi";
 import { AccountApi, TransactionApi } from "../lib/api";
 import { executeRazorpayPayment, type PaymentMetadata } from "../lib/razorpay";
+import { useNotifications, mapAppNotificationType, mapPriority } from "./NotificationContext";
 
 // ─── Feature Flag ─────────────────────────────────────────────────────────────
 // Set NEXT_PUBLIC_USE_MOCK=false in .env.local to switch to the real backend.
@@ -87,6 +88,8 @@ interface AccountContextType {
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
+  const { addNotification: addPageNotification } = useNotifications();
+
   // Default profile — used as fallback when nothing is persisted
   const DEFAULT_USER_PROFILE: UserProfile = {
     name: "Soumya Ranjan",
@@ -108,7 +111,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [securitySessions, setSecuritySessions] = useState<Record<string, { token: string; expiresAt: number; failedAttempts: number; isLocked: boolean; lockUntil?: number }>>({});
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isTotalBalanceHidden, setIsTotalBalanceHidden] = useState(false);
+  const [isTotalBalanceHidden, setIsTotalBalanceHidden] = useState(true);
 
   // Dynamic Notification Stream (Empty by default)
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -242,6 +245,58 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       type
     };
     saveNotificationsState([newNotif, ...notifications]);
+
+    let actionLink: string | undefined;
+    let actionLabel: string | undefined;
+    let sourceEvent: string | undefined;
+    const timestamp = Date.now();
+
+    if (title === "Profile Updated") {
+      actionLink = "/kyc-profile"; actionLabel = "View Profile"; sourceEvent = `PROFILE_UPDATE_${timestamp}`;
+    } else if (title === "Security Access Granted") {
+      actionLink = "/accounts"; actionLabel = "View Account"; sourceEvent = `SEC_ACCESS_${timestamp}`;
+    } else if (title === "Security Lockout Triggered") {
+      actionLink = "/accounts"; actionLabel = "Review Activity"; sourceEvent = `SEC_LOCKOUT_${timestamp}`;
+    } else if (title === "Transfer Executed via Razorpay") {
+      const match = subtitle.match(/Payment ID: (.+)$/);
+      const paymentId = match ? match[1] : timestamp.toString();
+      actionLink = "/transactions"; actionLabel = "View Transaction"; sourceEvent = `TRANSFER_${paymentId}`;
+    } else if (title === "Limits Updated") {
+      actionLink = "/accounts"; actionLabel = "View Account"; sourceEvent = `LIMITS_UPDATE_${timestamp}`;
+    } else if (title === "Account Frozen" || title === "Account Unfrozen") {
+      actionLink = "/accounts"; actionLabel = "View Account"; sourceEvent = `FREEZE_TOGGLE_${timestamp}`;
+    } else if (title === "Bill Payment via Razorpay") {
+      const match = subtitle.match(/Payment ID: (.+)$/);
+      const paymentId = match ? match[1] : timestamp.toString();
+      actionLink = "/transactions"; actionLabel = "View Bills"; sourceEvent = `BILL_PAY_${paymentId}`;
+    } else if (title === "Recharge via Razorpay") {
+      const match = subtitle.match(/Payment ID: (.+)$/);
+      const paymentId = match ? match[1] : timestamp.toString();
+      actionLink = "/transactions"; actionLabel = "View Recharge"; sourceEvent = `RECHARGE_${paymentId}`;
+    } else if (title === "Account Activated") {
+      actionLink = "/accounts"; actionLabel = "View Account"; sourceEvent = `ACCOUNT_CREATE_${timestamp}`;
+    } else if (title === "Fixed Deposit Created") {
+      actionLink = "/deposits"; actionLabel = "View Deposits"; sourceEvent = `FD_CREATE_${timestamp}`;
+    } else if (title === "Investment Executed") {
+      actionLink = "/investments"; actionLabel = "View Investments"; sourceEvent = `INVEST_${timestamp}`;
+    } else if (title === "Loan Sanctioned") {
+      actionLink = "/loans"; actionLabel = "View Loan"; sourceEvent = `LOAN_APPROVE_${timestamp}`;
+    } else if (title === "High Value Transfer Executed") {
+      actionLink = "/transactions"; actionLabel = "View Transaction"; sourceEvent = `HVT_${timestamp}`;
+    } else if (title === "Document Encrypted & Stored") {
+      actionLink = "/kyc-profile"; actionLabel = "View Vault"; sourceEvent = `DOC_UPLOAD_${timestamp}`;
+    }
+
+    addPageNotification({
+      type: mapAppNotificationType(type),
+      title,
+      description: subtitle,
+      priority: mapPriority(type),
+      category: type,
+      actionLink,
+      actionLabel,
+      sourceEvent
+    });
   };
 
   const addInboxMessage = (sender: string, subject: string, content: string) => {
@@ -442,7 +497,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
     if (isValidPin) {
       const newToken = `FE-SEC-${now}-${Math.floor(Math.random() * 10000)}`;
-      const expiresAt = now + 5 * 60 * 1000; // 5 minutes security session validity
+      const expiresAt = now + 1 * 60 * 1000; // 1 minute security session validity
 
       setSecuritySessions(prev => ({
         ...prev,
@@ -455,7 +510,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       }));
 
       setVerificationStates(prev => ({ ...prev, [id]: "VERIFIED" }));
-      addNotification("Security Access Granted", `Account details security session activated for account ${id}. Session valid for 5 minutes.`, "SECURITY");
+      addNotification("Security Access Granted", `Account details security session activated for account ${id}. Session valid for 1 minute.`, "SECURITY");
       return { success: true };
     } else {
       const failedAttempts = (existing.failedAttempts || 0) + 1;
