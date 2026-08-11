@@ -156,7 +156,12 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        log.info("Password successfully updated for user [{}]", user.getUsername());
+
+        // Revoke all active sessions and refresh tokens for this user
+        if (user.getId() != null) {
+            refreshTokenRepository.revokeAllUserTokens(user.getId());
+        }
+        log.info("Password successfully updated and all active sessions revoked for user [{}]", user.getUsername());
     }
 
     public UserResponse getCurrentUser(String username) {

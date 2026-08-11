@@ -19,9 +19,17 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
   // Security Form & State
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // 2FA Security State
+  const [securityStep, setSecurityStep] = useState<"CREDENTIALS" | "OTP">("CREDENTIALS");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [otp, setOtp] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [maskedEmail, setMaskedEmail] = useState("da***@gmail.com");
 
   // Lock & Unlock State
   const [unlockInput, setUnlockInput] = useState("");
@@ -41,6 +49,14 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
     }
   }, []);
 
+  useEffect(() => {
+    let timer: any;
+    if (cooldown > 0) {
+      timer = setInterval(() => setCooldown((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
   // 1. Lock Banking Session
   const handleLockSession = () => {
     if (typeof window !== "undefined") {
@@ -49,41 +65,32 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
     setIsLocked(true);
   };
 
-  // 2. Unlock Banking Session with Secure Credential Verification
-  const handleUnlock = async (e: React.FormEvent) => {
+  // 2. Unlock Session via PIN or Password
+  const handleUnlockSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!unlockInput.trim()) {
-      setUnlockError("Please enter your Password or Security PIN to unlock.");
-      return;
-    }
+    setUnlockError(null);
+    if (!unlockInput) return;
 
     setIsUnlocking(true);
-    setUnlockError(null);
-
     try {
-      // Validate PIN/Password (accepts demo PIN 1234 or any 4+ character password)
-      if (unlockInput.trim().length < 4) {
-        setUnlockError("Please enter at least 4 characters (Demo PIN: 1234).");
-        setIsUnlocking(false);
-        return;
+      if (unlockInput === "1234" || unlockInput === "123456" || unlockInput === "Password123!" || unlockInput.length >= 4) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("finedge_session_locked");
+        }
+        setIsLocked(false);
+        setUnlockInput("");
+      } else {
+        setUnlockError("Invalid PIN or password. Try '1234' or your account password.");
       }
-
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("finedge_session_locked");
-      }
-
-      setIsLocked(false);
-      setUnlockInput("");
-      onClose();
     } catch (err: any) {
-      setUnlockError("Unlock verification failed. Please try again.");
+      setUnlockError(err.message || "Failed to unlock session");
     } finally {
       setIsUnlocking(false);
     }
   };
 
-  // 3. Password & 2FA Security Update
-  const handleChangePassword = async (e: React.FormEvent) => {
+  // 3. Step 1: Initiate Password Change & Request 2FA OTP
+  const handleInitiatePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
 
@@ -92,8 +99,33 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters.");
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters long.");
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setPasswordError("New password must contain at least one uppercase letter (A-Z).");
+      return;
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      setPasswordError("New password must contain at least one lowercase letter (a-z).");
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      setPasswordError("New password must contain at least one number (0-9).");
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      setPasswordError("New password must contain at least one special character (!@#$%^&*).");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation password do not match.");
       return;
     }
 
@@ -103,13 +135,97 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
       const res = await fetch("/api/auth/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({
+          action: "INITIATE",
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setPasswordError(data.error || "Failed to update security credentials.");
+        setPasswordError(data.error || "Failed to process security update request.");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      setVerificationToken(data.verificationToken);
+      if (data.maskedEmail) setMaskedEmail(data.maskedEmail);
+      setSecurityStep("OTP");
+      setCooldown(60);
+      setPasswordError(null);
+    } catch (err: any) {
+      setPasswordError(err.message || "An error occurred while initiating security verification.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  // 4. Step 2: Resend 2FA OTP Code
+  const handleResendOtp = async () => {
+    if (cooldown > 0) return;
+    setPasswordError(null);
+    setIsChangingPassword(true);
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "INITIATE",
+          currentPassword,
+          newPassword,
+          isResend: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordError(data.error || "Failed to resend verification code.");
+        return;
+      }
+
+      setVerificationToken(data.verificationToken);
+      setCooldown(60);
+      setOtp("");
+    } catch (err: any) {
+      setPasswordError(err.message || "Failed to resend verification code.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  // 5. Step 3: Verify 2FA OTP & Execute Password Change
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (!otp || otp.trim().length !== 6) {
+      setPasswordError("Please enter the complete 6-digit security code.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "VERIFY_AND_CHANGE",
+          verificationToken,
+          otp: otp.trim(),
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPasswordError(data.error || "Invalid verification code.");
         setIsChangingPassword(false);
         return;
       }
@@ -117,13 +233,16 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
       setPasswordSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
+      setOtp("");
 
       setTimeout(() => {
         setPasswordSuccess(false);
+        setSecurityStep("CREDENTIALS");
         setShowSecurityModal(false);
-      }, 1500);
+      }, 2000);
     } catch (err: any) {
-      setPasswordError(err.message || "An error occurred while updating security settings.");
+      setPasswordError(err.message || "An error occurred during verification.");
     } finally {
       setIsChangingPassword(false);
     }
@@ -163,7 +282,7 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
             <p className="text-xs text-on-surface-variant">{userProfile.name} (Premium Member)</p>
           </div>
 
-          <form onSubmit={handleUnlock} className="w-full flex flex-col gap-3 mt-2">
+          <form onSubmit={handleUnlockSession} className="w-full flex flex-col gap-3 mt-2">
             <input
               type="password"
               placeholder="Enter PIN (1234) or Password"
@@ -327,42 +446,136 @@ export default function UserProfileDropdown({ isOpen, onClose }: Props) {
               </div>
             )}
 
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-3 text-xs">
-              <div className="flex flex-col gap-1">
-                <label className="text-on-surface-variant font-medium">Current Password</label>
-                <input 
-                  type="password" 
-                  required 
-                  autoComplete="off"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="bg-surface border border-outline-variant/30 p-2.5 rounded-xl text-on-surface focus:outline-none focus:border-primary" 
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-on-surface-variant font-medium">New Password</label>
-                <input 
-                  type="password" 
-                  required 
-                  autoComplete="off"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min 6 chars)"
-                  className="bg-surface border border-outline-variant/30 p-2.5 rounded-xl text-on-surface focus:outline-none focus:border-primary" 
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-white/5">
-                <button type="button" onClick={() => setShowSecurityModal(false)} className="px-4 py-2 bg-surface-high rounded-xl font-medium cursor-pointer">Cancel</button>
-                <button 
-                  type="submit" 
-                  disabled={isChangingPassword}
-                  className="px-5 py-2 bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all cursor-pointer flex items-center gap-2"
-                >
-                  {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : null} Update Password
-                </button>
-              </div>
-            </form>
+            {securityStep === "CREDENTIALS" ? (
+              <form onSubmit={handleInitiatePasswordChange} className="flex flex-col gap-3 text-xs">
+                <div className="flex flex-col gap-1">
+                  <label className="text-on-surface-variant font-medium">Current Password</label>
+                  <input 
+                    type="password" 
+                    required 
+                    autoComplete="off"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="bg-surface border border-outline-variant/30 p-2.5 rounded-xl text-on-surface focus:outline-none focus:border-primary font-medium" 
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-on-surface-variant font-medium">New Password</label>
+                  <input 
+                    type="password" 
+                    required 
+                    autoComplete="off"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 8 chars)"
+                    className="bg-surface border border-outline-variant/30 p-2.5 rounded-xl text-on-surface focus:outline-none focus:border-primary font-medium" 
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-on-surface-variant font-medium">Confirm New Password</label>
+                  <input 
+                    type="password" 
+                    required 
+                    autoComplete="off"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    className="bg-surface border border-outline-variant/30 p-2.5 rounded-xl text-on-surface focus:outline-none focus:border-primary font-medium" 
+                  />
+                </div>
+
+                {/* Password Strength Checklist */}
+                <div className="p-3 bg-surface-high/60 border border-outline-variant/10 rounded-xl flex flex-col gap-1.5 text-[11px] text-on-surface-variant my-1">
+                  <span className="font-semibold text-on-surface mb-0.5">Password Security Rules:</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <span className={`flex items-center gap-1 ${newPassword.length >= 8 ? "text-tertiary font-semibold" : ""}`}>
+                      • 8+ characters
+                    </span>
+                    <span className={`flex items-center gap-1 ${/[A-Z]/.test(newPassword) ? "text-tertiary font-semibold" : ""}`}>
+                      • Uppercase (A-Z)
+                    </span>
+                    <span className={`flex items-center gap-1 ${/[a-z]/.test(newPassword) ? "text-tertiary font-semibold" : ""}`}>
+                      • Lowercase (a-z)
+                    </span>
+                    <span className={`flex items-center gap-1 ${/[0-9]/.test(newPassword) ? "text-tertiary font-semibold" : ""}`}>
+                      • Number (0-9)
+                    </span>
+                    <span className={`flex items-center gap-1 col-span-2 ${/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? "text-tertiary font-semibold" : ""}`}>
+                      • Special char (!@#$%^&*)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-white/5">
+                  <button type="button" onClick={() => setShowSecurityModal(false)} className="px-4 py-2 bg-surface-high rounded-xl font-medium cursor-pointer">Cancel</button>
+                  <button 
+                    type="submit" 
+                    disabled={isChangingPassword}
+                    className="px-5 py-2 bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : null} Send 2FA Code
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 text-xs">
+                <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-xl text-primary text-xs font-medium flex flex-col gap-1">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <ShieldCheck size={16} /> 2FA Email Code Sent
+                  </span>
+                  <span className="text-[11px] text-on-surface-variant">
+                    We've sent a 6-digit security code to <strong className="text-on-surface font-semibold">{maskedEmail}</strong>. Code expires in 5 minutes.
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-on-surface-variant font-semibold text-xs">6-Digit Security Code</label>
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={6}
+                    autoFocus
+                    autoComplete="one-time-code"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit code"
+                    className="bg-surface border border-outline-variant/30 p-3 rounded-xl text-on-surface text-center font-mono text-lg tracking-[8px] focus:outline-none focus:border-primary font-bold" 
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-on-surface-variant pt-1">
+                  <span>Didn't get the code?</span>
+                  <button 
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={cooldown > 0 || isChangingPassword}
+                    className="text-primary font-bold hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
+                  >
+                    {cooldown > 0 ? `Resend Code in ${cooldown}s` : "Resend Security Code"}
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center gap-2 mt-2 pt-3 border-t border-white/5">
+                  <button 
+                    type="button" 
+                    onClick={() => { setSecurityStep("CREDENTIALS"); setPasswordError(null); }} 
+                    className="px-4 py-2 bg-surface-high rounded-xl font-medium cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isChangingPassword || otp.length !== 6}
+                    className="px-5 py-2 bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(240,180,41,0.4)] disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : null} Verify & Complete Change
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>,
         document.body

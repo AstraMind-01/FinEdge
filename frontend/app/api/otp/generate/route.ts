@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         subject: `FinEdge Security Code: ${readablePurpose} (${otpCode})`,
         html: htmlBody,
       });
-      console.log(`[REAL_GMAIL_SENT] Sent OTP ${otpCode} to ${targetIdentifier}`);
+      console.log(`[REAL_GMAIL_SENT] Dispatched security OTP to ${targetIdentifier}`);
     } catch (mailErr: any) {
       console.error("Nodemailer error sending email:", mailErr?.message || mailErr);
     }
@@ -109,7 +109,6 @@ export async function POST(req: Request) {
       resendCooldownSeconds: 30,
       remainingAttempts: 3,
       message: `Verification code sent to ${targetIdentifier}`,
-      otpCode: otpCode,
       targetIdentifier: targetIdentifier,
       sentAt: new Date().toISOString()
     });
