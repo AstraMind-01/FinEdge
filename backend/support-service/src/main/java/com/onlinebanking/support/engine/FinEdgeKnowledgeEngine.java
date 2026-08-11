@@ -32,12 +32,12 @@ public class FinEdgeKnowledgeEngine {
         String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm a"));
 
         // 1. Guardrail Check: Never expose sensitive secrets
-        if (lower.contains("password") && (lower.contains("what is my") || lower.contains("reveal") || lower.contains("show me"))) {
+        if (lower.contains("password") && (lower.contains("what is") || lower.contains("reveal") || lower.contains("show me"))) {
             return ChatResponse.builder()
                     .conversationId(convId)
-                    .reply("🔒 FinEdge Security Alert: Passwords and security PINs are strictly encrypted. If you forgot your password, please use the 'Forgot Password' link on the login page.")
+                    .reply("🔒 **Security Alert**: Passwords and PINs are strictly encrypted. To reset your password, click 'Forgot Password?' on the login screen or open Security Settings.")
                     .timestamp(timeStr)
-                    .quickActions(List.of("Contact Support", "Check KYC"))
+                    .quickActions(List.of("Security Settings", "Contact Support"))
                     .escalated(false)
                     .build();
         }
@@ -45,7 +45,7 @@ public class FinEdgeKnowledgeEngine {
         if (lower.contains("otp") && (lower.contains("give me") || lower.contains("what is") || lower.contains("code"))) {
             return ChatResponse.builder()
                     .conversationId(convId)
-                    .reply("🛡️ Security Policy: Ayesha and FinEdge staff will NEVER ask for or reveal your OTP over chat, SMS, or call.")
+                    .reply("🛡️ **Security Policy**: Ayasa and FinEdge staff will NEVER ask for, reveal, or share your OTP over chat, SMS, or call.")
                     .timestamp(timeStr)
                     .quickActions(List.of("Contact Support", "Check KYC"))
                     .escalated(false)
@@ -58,7 +58,7 @@ public class FinEdgeKnowledgeEngine {
             if (extractedTicketId != null) {
                 Map<String, Object> tData = tools.getSupportTicket(extractedTicketId, userId);
                 if ((Boolean) tData.get("found")) {
-                    String reply = String.format("🎫 Support Ticket Status [%s]:\n• Category: %s\n• Issue: %s\n• Priority: %s\n• Current Status: %s\n• Last Updated: %s\n\nOur priority desk is investigating your case.",
+                    String reply = String.format("🎫 **Support Ticket Status** [%s]:\n• Category: %s\n• Issue: %s\n• Priority: %s\n• Current Status: %s\n• Last Updated: %s\n\nMonitor your ticket on [Disputes Management](/disputes).",
                             tData.get("ticketId"), tData.get("category"), tData.get("issueSummary"), tData.get("priority"), tData.get("status"), tData.get("updatedAt"));
                     return ChatResponse.builder()
                             .conversationId(convId)
@@ -72,7 +72,7 @@ public class FinEdgeKnowledgeEngine {
             }
         }
 
-        // 3. Human Escalation / Dispute Detection -> Create Real Support Ticket
+        // 3. Human Escalation / Fraud Detection
         if (lower.contains("human") || lower.contains("agent") || lower.contains("representative") ||
             lower.contains("dispute") || lower.contains("fraud") || lower.contains("unauthorized") ||
             lower.contains("blocked transaction") || lower.contains("stolen") || lower.contains("escalate")) {
@@ -80,112 +80,18 @@ public class FinEdgeKnowledgeEngine {
             return createSupportTicketAndEscalate(req, convId, timeStr, lower);
         }
 
-        // 4. Authorized Tool Retrievals
-        if (lower.contains("my account") || lower.contains("account balance") || lower.contains("where can i see") || lower.contains("account summary")) {
-            Map<String, Object> summary = tools.getAccountSummary(userId);
-            List<Map<String, String>> accs = (List<Map<String, String>>) summary.get("accounts");
+        // 4. Structured 6-Step FinEdge Help Walkthroughs
 
-            StringBuilder sb = new StringBuilder("💼 Your FinEdge Accounts Overview:\n");
-            for (Map<String, String> acc : accs) {
-                sb.append(String.format("• %s (%s) — %s [%s]\n", acc.get("name"), acc.get("maskedNumber"), acc.get("type"), acc.get("status")));
-            }
-            sb.append("\n🔒 Note: Balances are masked (`••••••••`) until you complete an in-app Security PIN verification on the [Accounts Directory](/accounts) screen.");
-
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(sb.toString())
-                    .timestamp(timeStr)
-                    .quickActions(List.of("View Accounts", "Transfer Money", "Check Transactions"))
-                    .actionRedirectUrl("/accounts")
-                    .escalated(false)
-                    .build();
-        }
-
-        if (lower.contains("transaction status") || lower.contains("check transaction") || lower.contains("txn-")) {
-            String txnId = extractTxnId(msg);
-            Map<String, Object> statusData = tools.getTransactionStatus(txnId, userId);
-            
-            String reply = String.format("📊 Transaction Investigation Details [%s]:\n• Status: %s\n• Amount: %s\n• Timestamp: %s\n• Fraud Risk Score: %s\n• Notes: %s\n\nView full history on [Transactions](/transactions).",
-                    statusData.get("transactionId"), statusData.get("status"), statusData.get("amount"),
-                    statusData.get("timestamp"), statusData.get("fraudRiskScore"),
-                    statusData.containsKey("reason") ? statusData.get("reason") : "Transaction completed normally.");
-
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Check Transactions", "Dispute Transaction", "Transfer Money"))
-                    .actionRedirectUrl("/transactions")
-                    .escalated(false)
-                    .build();
-        }
-
-        if (lower.contains("recharge") && (lower.contains("status") || lower.contains("my plan") || lower.contains("mobile"))) {
-            Map<String, Object> r = tools.getRechargeStatus("9876543210", userId);
-            String reply = String.format("📱 Mobile Recharge Record [%s]:\n• Mobile: %s\n• Operator: %s\n• Amount: %s\n• Plan: %s\n• Status: %s\n\nYou can top up anytime under [Transfers & Payments](/transfers).",
-                    r.get("referenceId"), r.get("mobileNumber"), r.get("operator"), r.get("lastRechargeAmount"), r.get("planDetails"), r.get("status"));
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Recharge Mobile", "Pay Bills", "Transfer Money"))
-                    .actionRedirectUrl("/transfers")
-                    .escalated(false)
-                    .build();
-        }
-
-        if (lower.contains("bill") && (lower.contains("status") || lower.contains("paid") || lower.contains("pay"))) {
-            Map<String, Object> b = tools.getBillPaymentStatus("Tata Power Delhi", userId);
-            String reply = String.format("⚡ Utility Bill Payment Status [%s]:\n• Biller: %s\n• Consumer No: %s\n• Last Paid: %s\n• Status: %s\n• Next Due Date: %s\n\nPay utility bills securely on [Pay Bills](/transfers).",
-                    b.get("bbpsRefNo"), b.get("billerName"), b.get("consumerNumber"), b.get("lastPaidAmount"), b.get("paymentStatus"), b.get("nextDueDate"));
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Pay Bills", "Recharge Mobile", "View Accounts"))
-                    .actionRedirectUrl("/transfers")
-                    .escalated(false)
-                    .build();
-        }
-
-        if (lower.contains("kyc") || lower.contains("document vault") || lower.contains("aadhaar")) {
-            Map<String, Object> k = tools.getKycStatus(userId);
-            String reply = String.format("📑 KYC & Document Vault Status:\n• KYC Status: %s\n• Verification Tier: %s\n• Next Re-KYC Due: %s\n• Documents in Vault: %s\n\nInspect your verified identity vault at [KYC & Profile](/kyc-profile).",
-                    k.get("kycStatus"), k.get("verificationTier"), k.get("reKycDueDate"), k.get("documents"));
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Check KYC", "View Accounts", "Contact Support"))
-                    .actionRedirectUrl("/kyc-profile")
-                    .escalated(false)
-                    .build();
-        }
-
-        if (lower.contains("watchlist") || lower.contains("my stocks") || lower.contains("saved funds")) {
-            String reply = "👁️ Your FinEdge Persistent Watchlist Summary:\n\n" +
-                    "• Tata Motors (TATAMOTORS.NS) — ₹812.40 (+2.3%)\n" +
-                    "• HDFC Flexi Cap Fund — NAV ₹42.15 (+1.1%)\n" +
-                    "• Infosys (INFY.NS) — ₹1,542.60 (-0.4%)\n\n" +
-                    "📈 Live market data is synchronized with your [Investments & Watchlist](/investments) page & PostgreSQL database.";
-            return ChatResponse.builder()
-                    .conversationId(convId)
-                    .reply(reply)
-                    .timestamp(timeStr)
-                    .quickActions(List.of("Manage Watchlist", "Invest in Mutual Funds", "Open Fixed Deposit"))
-                    .actionRedirectUrl("/investments")
-                    .escalated(false)
-                    .build();
-        }
-
-        // 5. Cards & Card Details Intent
-        if (lower.contains("card") || lower.contains("debit") || lower.contains("credit") || lower.contains("cvv") || lower.contains("expiry") || lower.contains("virtual card")) {
-            String reply = "💳 How to View Your Card Details on FinEdge:\n\n" +
-                    "1. Navigate to [Manage Cards](/cards).\n" +
-                    "2. Select your Platinum Debit Card or Rewards Credit Card.\n" +
-                    "3. Click 'View Card Details' or 'Reveal Card Number'.\n" +
-                    "4. Complete the 2FA Security PIN verification to unmask the 16-digit card number and CVV for 5 minutes.\n\n" +
-                    "🔒 Security Note: Card details are 256-bit encrypted.";
+        // Cards Intent
+        if (lower.contains("card") || lower.contains("debit") || lower.contains("credit") || lower.contains("cvv") || lower.contains("expiry")) {
+            String reply = buildStepByStep("Viewing Card Details & Managing Cards",
+                    "/cards", "Manage Cards",
+                    "Navigate to Manage Cards",
+                    "Select your active Debit Card or Credit Card from the card carousel.",
+                    "Click 'View Card Details' or 'Reveal Card Number'.",
+                    "Enter your 4-digit Security PIN or OTP to unmask sensitive card numbers.",
+                    "16-digit card number and CVV are unmasked for 5 minutes before auto-masking.",
+                    "Look for the 'Card Details Unmasked' status badge on your card display.");
             return ChatResponse.builder()
                     .conversationId(convId)
                     .reply(reply)
@@ -195,59 +101,124 @@ public class FinEdgeKnowledgeEngine {
                     .build();
         }
 
-        // 6. Guided Step-by-Step FinEdge Help Answers
-        if (lower.contains("transfer") || lower.contains("send money") || lower.contains("how do i transfer")) {
-            String reply = "💸 How to Perform Fund Transfers on FinEdge:\n\n" +
-                    "1. Go to [Fund Transfers](/transfers/fund-transfer).\n" +
-                    "2. Choose Recipient: Select an Own Account, Saved Beneficiary, or enter a new Bank Account / UPI ID.\n" +
-                    "3. Enter Amount & Mode: IMPS (Instant 24/7), NEFT (2-4 hrs, free), or RTGS (₹2L+).\n" +
-                    "4. Authenticate: Enter your 4-digit Security PIN or OTP to authorize.\n\n" +
-                    "⚡ Transfer Limits: ₹2,00,000/day for Savings Account; ₹5,00,000/day for Business Current Account.";
+        // Transfers Intent
+        if (lower.contains("transfer") || lower.contains("send money") || lower.contains("imps") || lower.contains("neft") || lower.contains("upi")) {
+            String reply = buildStepByStep("Executing Fund Transfers",
+                    "/transfers/fund-transfer", "Fund Transfers",
+                    "Go to Fund Transfers page",
+                    "Select Source Account and Recipient (Saved Beneficiary or New Account / UPI ID).",
+                    "Select payment mode (IMPS Instant, NEFT, or RTGS) and click 'Initiate Transfer'.",
+                    "Enter transfer amount, remark, and complete 2FA Security PIN / OTP verification.",
+                    "Real-time fraud risk engine checks transaction safety and dispatches funds.",
+                    "Receive instant transaction reference ID (TXN-XXXXXXXX) and downloadable PDF receipt.");
             return ChatResponse.builder()
                     .conversationId(convId)
                     .reply(reply)
                     .timestamp(timeStr)
-                    .quickActions(List.of("Transfer Money", "View Accounts", "Check Transactions"))
+                    .quickActions(List.of("Transfer Money", "Manage Beneficiaries", "Check Transactions"))
                     .actionRedirectUrl("/transfers/fund-transfer")
                     .build();
         }
 
-        if (lower.contains("limit") || lower.contains("maximum") || lower.contains("fee") || lower.contains("charges")) {
-            String reply = "📊 FinEdge Transfer Limits & Fee Schedule:\n\n" +
-                    "• NEFT / RTGS / UPI: 100% FREE with ZERO bank charges.\n" +
-                    "• IMPS Transfers: Free up to ₹50,000; nominal ₹5 fee above ₹50,000.\n" +
-                    "• Daily Savings Limit: ₹2,00,000 per day.\n" +
-                    "• Daily Business Limit: ₹5,00,000 per day.\n" +
-                    "• Request a limit upgrade directly in [Transfers](/transfers).";
+        // International Transfers
+        if (lower.contains("international") || lower.contains("swift") || lower.contains("forex") || lower.contains("wire")) {
+            String reply = buildStepByStep("International Wire Transfers (SWIFT)",
+                    "/transfers/international", "International Wire Transfers",
+                    "Navigate to International Wire Transfers",
+                    "Select destination country, foreign currency (USD, EUR, GBP), and recipient SWIFT/BIC code.",
+                    "Click 'Send International Wire'.",
+                    "Provide beneficiary bank details, purpose code, and authorize with 2FA email OTP.",
+                    "Guaranteed FX exchange rate lock is applied and SWIFT payment message is transmitted.",
+                    "Track wire status live using SWIFT UETR tracking code under Transactions.");
             return ChatResponse.builder()
                     .conversationId(convId)
                     .reply(reply)
                     .timestamp(timeStr)
-                    .quickActions(List.of("Transfer Money", "View Accounts", "Contact Support"))
+                    .quickActions(List.of("International Transfer", "Transfer Money", "View Accounts"))
+                    .actionRedirectUrl("/transfers/international")
+                    .build();
+        }
+
+        // Accounts & Balances
+        if (lower.contains("account") || lower.contains("balance") || lower.contains("statement") || lower.contains("cheque")) {
+            String reply = buildStepByStep("Accounts Overview & Cheque Book Requests",
+                    "/accounts", "Accounts Directory",
+                    "Navigate to Accounts Directory",
+                    "Select Primary Savings Account or Business Current Account.",
+                    "Click 'View Details', 'Download Statement', or 'Request Cheque Book'.",
+                    "Authenticate with 4-digit Security PIN.",
+                    "Account balances unmask and requested services/statements generate instantly.",
+                    "Check updated account dashboard and confirmation notification.");
+            return ChatResponse.builder()
+                    .conversationId(convId)
+                    .reply(reply)
+                    .timestamp(timeStr)
+                    .quickActions(List.of("View Accounts", "Transfer Money", "Check Transactions"))
+                    .actionRedirectUrl("/accounts")
+                    .build();
+        }
+
+        // Recharges & Utility Bills
+        if (lower.contains("recharge") || lower.contains("bill") || lower.contains("electricity") || lower.contains("water") || lower.contains("bbps")) {
+            String reply = buildStepByStep("Mobile Recharges & Utility Bill Payments",
+                    "/transfers", "Transfers & Payments",
+                    "Go to Transfers & Payments",
+                    "Select 'Mobile Recharge' or 'Utility Bills' (Electricity, Water, Gas, DTH).",
+                    "Choose biller/operator, enter consumer number, and click 'Proceed to Pay'.",
+                    "Select debiting account and authorize with your Security PIN.",
+                    "Bharat BillPay (BBPS) gateway verifies biller and completes payment instantly.",
+                    "View your BBPS payment reference ID and instant email/SMS confirmation.");
+            return ChatResponse.builder()
+                    .conversationId(convId)
+                    .reply(reply)
+                    .timestamp(timeStr)
+                    .quickActions(List.of("Recharge Mobile", "Pay Bills", "View Accounts"))
                     .actionRedirectUrl("/transfers")
                     .build();
         }
 
-        if (lower.contains("hi") || lower.contains("hello") || lower.contains("hey") || lower.contains("greetings")) {
-            String reply = "Hello Soumya! 👋 I'm Ayesha, your FinEdge AI Support Assistant. I can help you check account balances, view card details, perform transfers, track recharges/bills, review fraud risk scores, or manage your watchlist. How can I assist you today?";
+        // KYC & Profile
+        if (lower.contains("kyc") || lower.contains("aadhaar") || lower.contains("pan") || lower.contains("nominee") || lower.contains("address")) {
+            String reply = buildStepByStep("KYC Verification & Nominee Updates",
+                    "/kyc-profile", "KYC & Profile Vault",
+                    "Go to KYC & Profile Vault",
+                    "Select 'Update KYC', 'Nominee Details', or 'Update Address'.",
+                    "Click 'Upload Documents' or 'Update Nominee'.",
+                    "Upload document scans (Aadhaar / PAN) and verify with 2FA email OTP.",
+                    "Document verification engine validates identity against official registries.",
+                    "Check for 'KYC Verified - Tier 1' status badge on your profile.");
             return ChatResponse.builder()
                     .conversationId(convId)
                     .reply(reply)
                     .timestamp(timeStr)
-                    .quickActions(List.of("View Accounts", "Transfer Money", "View Cards", "Manage Watchlist"))
+                    .quickActions(List.of("Check KYC", "Update Profile", "Contact Support"))
+                    .actionRedirectUrl("/kyc-profile")
                     .build();
         }
 
-        // Dynamic Conversational Fallback tailored specifically to user's question
-        String dynamicReply = String.format("Hello Soumya! 👋 I'm Ayesha. I understand you're asking about '%s'.\n\nYou can manage this directly from your FinEdge banking portal. Check out these quick links:\n• [Accounts](/accounts) — Check balances and statements\n• [Transfers](/transfers/fund-transfer) — Send money via IMPS/NEFT/UPI\n• [Cards](/cards) — Manage debit/credit cards\n• [Watchlist & Investments](/investments) — Track stocks & mutual funds\n\nPlease let me know if you would like step-by-step guidance on any topic!", msg);
-
+        // Default Conversational Greeting
+        String defaultReply = "Hello Soumya! 👋 I'm **Ayasa**, your FinEdge AI Support Assistant.\n\nI provide **step-by-step guidance** for every feature on FinEdge:\n• [Accounts & Balances](/accounts)\n• [Fund Transfers](/transfers/fund-transfer)\n• [Manage Cards](/cards)\n• [Disputes & Fraud](/disputes)\n• [Recharges & Bills](/transfers)\n• [KYC & Profile](/kyc-profile)\n\nHow can I help you today?";
         return ChatResponse.builder()
                 .conversationId(convId)
-                .reply(dynamicReply)
+                .reply(defaultReply)
                 .timestamp(timeStr)
-                .quickActions(List.of("View Accounts", "Transfer Money", "View Cards", "Contact Support"))
+                .quickActions(List.of("View Accounts", "Transfer Money", "View Cards"))
                 .escalated(false)
                 .build();
+    }
+
+    private String buildStepByStep(String title, String route, String routeName, String whereToGo,
+                                   String whatToSelect, String actionButton, String verification,
+                                   String whatHappensNext, String howToConfirm) {
+        return String.format("🤖 **Ayasa Step-by-Step Guidance: %s**\n\n" +
+                        "1. **Where to go:** Navigate to [%s](%s)\n" +
+                        "2. **What to select:** %s\n" +
+                        "3. **What button/action to use:** %s\n" +
+                        "4. **What information or verification is required:** %s\n" +
+                        "5. **What happens next:** %s\n" +
+                        "6. **How to confirm:** %s\n\n" +
+                        "🔒 *Security Notice: Sensitive operations require Security PIN or 2FA Email OTP authorization. Security checks can never be bypassed.*",
+                title, routeName, route, whatToSelect, actionButton, verification, whatHappensNext, howToConfirm);
     }
 
     private ChatResponse createSupportTicketAndEscalate(ChatRequest req, String convId, String timeStr, String lowerMsg) {
@@ -278,7 +249,7 @@ public class FinEdgeKnowledgeEngine {
 
         ticketRepository.save(ticket);
 
-        String reply = String.format("🤝 I'm connecting you with FinEdge Priority Support!\n\nA priority support ticket has been created:\n• Ticket ID: %s\n• Category: %s\n• Priority: %s\n• Status: OPEN (Assigned to Human Support Desk)\n\nYou can track disputes anytime under [Disputes Management](/disputes).",
+        String reply = String.format("🤝 **Priority Support Escalation**\n\nA priority support ticket has been created:\n• Ticket ID: %s\n• Category: %s\n• Priority: %s\n• Status: OPEN (Assigned to Human Support Desk)\n\nYou can track disputes anytime under [Disputes Management](/disputes).",
                 ticketId, category.name(), priority.name());
 
         return ChatResponse.builder()
@@ -302,11 +273,11 @@ public class FinEdgeKnowledgeEngine {
     }
 
     private String extractTxnId(String text) {
-        if (text == null) return "TXN-99824";
+        if (text == null) return "TXN-2026-88192";
         int idx = text.toUpperCase().indexOf("TXN-");
-        if (idx != -1 && text.length() >= idx + 9) {
-            return text.substring(idx, idx + 9).toUpperCase();
+        if (idx != -1 && text.length() >= idx + 14) {
+            return text.substring(idx, idx + 14).toUpperCase();
         }
-        return "TXN-99824";
+        return "TXN-2026-88192";
     }
 }
