@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 
 // ---------- Data ----------
 const kpiCards = [
@@ -89,13 +90,13 @@ const kycItems = [
 ];
 
 const navItems = [
-  { icon: "dashboard",     label: "Dashboard Overview",    active: true  },
-  { icon: "group",         label: "User Management",       active: false },
-  { icon: "receipt_long",  label: "Transaction Monitoring",active: false },
-  { icon: "report_problem",label: "Fraud Alerts",          active: false },
-  { icon: "verified_user", label: "KYC Approvals",         active: false },
-  { icon: "settings",      label: "System Settings",       active: false },
-  { icon: "bar_chart",     label: "Reports",               active: false },
+  { icon: "dashboard",     label: "Dashboard Overview",    href: "/admin",             active: true  },
+  { icon: "group",         label: "User Management",       href: "/admin/users",       active: false },
+  { icon: "receipt_long",  label: "Transaction Monitoring",href: "/admin/transactions",active: false },
+  { icon: "report_problem",label: "Fraud Alerts",          href: "/admin/fraud-alerts",active: false },
+  { icon: "verified_user", label: "KYC Approvals",         href: "/admin/kyc-approvals",active: false },
+  { icon: "settings",      label: "System Settings",       href: "/admin/settings",    active: false },
+  { icon: "bar_chart",     label: "Reports",               href: "/admin/reports",     active: false },
 ];
 
 // ---------- Status chip ----------
@@ -163,8 +164,8 @@ export default function AdminDashboard() {
           <ul className="space-y-1">
             {navItems.map((item) => (
               <li key={item.label}>
-                <a
-                  href="#"
+                <Link
+                  href={item.href}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors ${
                     item.active
                       ? "font-bold border-r-4"
@@ -178,7 +179,7 @@ export default function AdminDashboard() {
                 >
                   <span className={`material-symbols-outlined text-[20px] ${item.active ? "fill-icon" : ""}`}>{item.icon}</span>
                   <span>{item.label}</span>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
