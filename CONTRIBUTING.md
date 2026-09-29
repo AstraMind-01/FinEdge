@@ -19,11 +19,29 @@ Welcome to the FinEdge project! To ensure smooth collaboration among the team, p
 
 We use conventional commit messages. Please prefix your commits with one of the following:
 
-- `feat:` for new features (e.g., `feat: add transaction transfer API`)
+- `feat:` for new features (e.g., `feat: add transaction transfer API`, `feat: implement JWT authentication`, `feat: add random forest fraud model`, `feat: create fraud risk dashboard`)
 - `fix:` for bug fixes (e.g., `fix: correct account ownership validation`)
 - `test:` for adding or modifying tests (e.g., `test: add transaction service tests`)
 - `docs:` for documentation updates (e.g., `docs: update architecture documentation`)
 - `refactor:` for code changes that neither fix a bug nor add a feature
 - `chore:` for routine tasks like updating dependencies or configuration
+
+### Examples:
+```bash
+feat: add transaction transfer API
+feat: implement JWT authentication
+feat: add random forest fraud model
+feat: create fraud risk dashboard
+fix: correct account ownership validation
+test: add transaction service tests
+docs: update architecture documentation
+```
+
+## Team Responsibilities
+
+- **Pritam Sahoo (AstraMind-01 / Team Lead)**: Transaction Service, Transaction workflow, ML integration, System integration, Architecture
+- **Subhankar Das (Immortalcoder0)**: Auth Service, Account Service, JWT/security, Account ownership
+- **Soumyadip Singha (Simply-Coder-start)**: Fraud Detection Service, Python/FastAPI, ML preprocessing, Model training, Model evaluation, Risk scoring
+- **Rishav Singh (rishavsingh181)**: React frontend, Fraud dashboard, Docker/DevOps, Integration testing
 
 Happy coding!

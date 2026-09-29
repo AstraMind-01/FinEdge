@@ -100,8 +100,10 @@ export default function TransactionMonitoring() {
   // Simulate Live Feed
   useEffect(() => {
     const interval = setInterval(() => {
+      // Generate ID outside the state updater to avoid double-execution issues in Strict Mode
+      const newId = `TX-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+      
       setTransactions((prev) => {
-        const newId = `TX-${9983 + Math.floor(Math.random() * 100)}`;
         const types = ["Transfer", "Card Payment", "Deposit"];
         const statuses: Transaction["status"][] = ["Success", "Success", "Success", "Pending", "Failed"];
         

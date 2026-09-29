@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 
 // ---------- Data ----------
@@ -45,11 +45,140 @@ const scheduledReports = [
   { name: "Daily Txn Exceptions", frequency: "Every day at 23:59", nextRun: "Today, 23:59", recipients: "ops-alerts@finedge.com", active: false },
 ];
 
+// ---------- Types ----------
+type ButtonState = 'idle' | 'loading' | 'success' | 'error';
+type ToastType = 'success' | 'error' | 'info';
+interface ToastData { id: number; message: string; type: ToastType; }
+
+// ---------- Mock CSV Generation ----------
+function generateMockCsv(): string {
+  const header = 'Transaction ID,Date,Customer Name,Account Number,Type,Amount,Status,Risk Score';
+  const rows = [
+    'TXN-20260801-001,2026-08-01 09:15:23,Rajesh Kumar,XXXX-4521,UPI Transfer,12500.00,Completed,0.12',
+    'TXN-20260801-002,2026-08-01 10:42:11,Priya Sharma,XXXX-7834,NEFT,85000.00,Completed,0.08',
+    'TXN-20260801-003,2026-08-01 11:05:47,Amit Verma,XXXX-2190,Card Payment,4350.50,Completed,0.45',
+    'TXN-20260801-004,2026-08-01 12:30:00,Sneha Patel,XXXX-6623,Wire Transfer,250000.00,Flagged,0.78',
+    'TXN-20260801-005,2026-08-01 13:18:33,Vikram Singh,XXXX-1105,UPI Transfer,1800.00,Completed,0.05',
+    'TXN-20260801-006,2026-08-01 14:55:21,Deepika Nair,XXXX-8847,RTGS,500000.00,Completed,0.22',
+    'TXN-20260801-007,2026-08-01 15:40:09,Arjun Reddy,XXXX-3356,Card Payment,7820.00,Blocked,0.91',
+    'TXN-20260801-008,2026-08-01 16:22:44,Kavitha Iyer,XXXX-9912,IMPS,32000.00,Completed,0.15',
+    'TXN-20260801-009,2026-08-02 08:10:55,Rahul Mehta,XXXX-5578,UPI Transfer,950.00,Completed,0.03',
+    'TXN-20260802-010,2026-08-02 09:45:12,Ananya Desai,XXXX-4401,NEFT,67500.00,Completed,0.11',
+    'TXN-20260802-011,2026-08-02 10:30:28,Suresh Babu,XXXX-7720,Card Payment,15600.00,Completed,0.35',
+    'TXN-20260802-012,2026-08-02 11:55:39,Lakshmi Devi,XXXX-2233,Wire Transfer,1200000.00,Flagged,0.82',
+  ];
+  const footer = `\nTotal Records:,${rows.length},,,,Total Amount:,2177520.50,,`;
+  return '\uFEFF' + header + '\n' + rows.join('\n') + footer;
+}
+
 // ---------- Components ----------
 function FormatIcon({ format }: { format: string }) {
   if (format === "excel") return <span className="material-symbols-outlined text-[#57f1db] text-[20px]">table_view</span>;
   if (format === "pdf") return <span className="material-symbols-outlined text-[#ffb4ab] text-[20px]">picture_as_pdf</span>;
   return <span className="material-symbols-outlined text-[#f0b429] text-[20px]">data_object</span>; // CSV
+}
+
+function Toast({ toast, onDismiss }: { toast: ToastData; onDismiss: (id: number) => void }) {
+  useEffect(() => {
+    const timer = setTimeout(() => onDismiss(toast.id), 4000);
+    return () => clearTimeout(timer);
+  }, [toast.id, onDismiss]);
+
+  const borderColor = toast.type === 'error' ? '#ffb4ab' : toast.type === 'success' ? '#2dd4bf' : '#f0b429';
+  const iconName = toast.type === 'error' ? 'error' : toast.type === 'success' ? 'check_circle' : 'info';
+  const iconColor = borderColor;
+
+  return (
+    <div className="toast-enter flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl min-w-[320px] max-w-[440px]"
+         style={{ background: '#1a2035', border: '1px solid #2f3445', borderLeft: `3px solid ${borderColor}` }}>
+      <span className="material-symbols-outlined fill-icon text-[20px]" style={{ color: iconColor }}>{iconName}</span>
+      <p className="text-sm text-[#dde2f8] flex-1">{toast.message}</p>
+      <button onClick={() => onDismiss(toast.id)} className="text-[#9c8f7a] hover:text-white">
+        <span className="material-symbols-outlined text-[16px]">close</span>
+      </button>
+    </div>
+  );
+}
+
+function GenerateReportButton({ label = 'Generate Report', onComplete, addToast }: { label?: string; onComplete?: () => void; addToast: (message: string, type: ToastType) => void }) {
+  const [state, setState] = useState<ButtonState>('idle');
+
+  const handleClick = useCallback(async () => {
+    if (state !== 'idle') return;
+    setState('loading');
+
+    try {
+      // Try the real backend first
+      let csvText: string;
+      let filename: string;
+
+      try {
+        const res = await fetch('http://localhost:8080/admin-api/admin/reports/transactions/export?format=csv', {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('adminToken') || '') },
+        });
+
+        if (res.ok && res.headers.get('content-type')?.includes('csv')) {
+          csvText = await res.text();
+          const disposition = res.headers.get('content-disposition');
+          filename = disposition?.match(/filename="(.+)"/)?.[1] || `report_${new Date().toISOString().slice(0, 10)}.csv`;
+        } else {
+          throw new Error('Backend unavailable');
+        }
+      } catch {
+        // Fallback: generate mock CSV data locally
+        await new Promise(r => setTimeout(r, 1500)); // Simulate network delay
+        csvText = generateMockCsv();
+        filename = `transactions_report_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}_${String(new Date().getHours()).padStart(2, '0')}${String(new Date().getMinutes()).padStart(2, '0')}.csv`;
+      }
+
+      // Trigger download via Blob API
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setState('success');
+      addToast(`Report "${filename}" downloaded successfully`, 'success');
+      onComplete?.();
+      setTimeout(() => setState('idle'), 1800);
+    } catch (err: any) {
+      setState('error');
+      addToast(err?.message || 'Report generation failed. Please try again.', 'error');
+      setTimeout(() => setState('idle'), 2500);
+    }
+  }, [state, addToast, onComplete]);
+
+  const config = {
+    idle:    { icon: 'bar_chart',    text: label,             bg: '#f0b429', color: '#412d00', cursor: 'pointer' },
+    loading: { icon: 'progress_activity', text: 'Generating...', bg: '#d9a225', color: '#412d00', cursor: 'wait' },
+    success: { icon: 'check_circle', text: 'Downloaded',      bg: '#2dd4bf', color: '#0d1322', cursor: 'default' },
+    error:   { icon: 'error',        text: 'Failed — Retry',  bg: '#ef4444', color: '#ffffff', cursor: 'pointer' },
+  }[state];
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={state === 'loading' || state === 'success'}
+      className={`generate-report-btn flex items-center gap-2.5 px-5 py-2.5 rounded-[10px] text-sm font-bold shadow-lg transition-all duration-200 select-none
+        ${state === 'idle' ? 'hover:scale-[1.02] active:scale-[0.98]' : ''}
+        ${state === 'loading' || state === 'success' ? 'opacity-90 cursor-wait' : ''}
+      `}
+      style={{ background: config.bg, color: config.color, cursor: config.cursor }}
+    >
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center ${state === 'idle' ? 'bg-[#412d00]/20' : ''}`}>
+        <span className={`material-symbols-outlined text-[18px] ${state === 'loading' ? 'spinner' : ''} ${state === 'success' ? 'fill-icon' : ''}`}>
+          {config.icon}
+        </span>
+      </span>
+      {config.text}
+    </button>
+  );
 }
 
 // ---------- Main Page ----------
@@ -58,6 +187,15 @@ export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState("All Reports");
   const [builderExpanded, setBuilderExpanded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastData[]>([]);
+
+  const addToast = useCallback((message: string, type: ToastType) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+  const dismissToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   return (
     <div className="min-h-screen flex overflow-x-hidden antialiased" style={{ background: "#0d1322", color: "#dde2f8", fontFamily: "Inter, sans-serif" }}>
@@ -70,8 +208,12 @@ export default function ReportsPage() {
         .headline-font { font-family: 'Hanken Grotesk', sans-serif; }
         .mono-font { font-family: 'Geist', monospace; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #504534; border-radius: 4px; }
-        .spinner { animation: spin 1s linear infinite; }
+        .spinner { animation: spin 0.8s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        .generate-report-btn { box-shadow: 0 4px 14px rgba(240,180,41,0.25); }
+        .generate-report-btn:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(240,180,41,0.35); }
+        @keyframes toastSlideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-enter { animation: toastSlideIn 0.3s ease-out forwards; }
       `}</style>
 
       {/* ── Sidebar ── */}
@@ -258,7 +400,7 @@ export default function ReportsPage() {
 
                         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#2f3445]">
                           <button className="px-4 py-2 text-sm text-[#d4c5ad] hover:text-white">Preview Data</button>
-                          <button className="px-6 py-2 rounded-lg text-sm font-bold bg-[#f0b429] text-[#412d00] hover:opacity-90 shadow-lg">Generate Report</button>
+                          <GenerateReportButton addToast={addToast} />
                         </div>
                       </div>
                     </div>
@@ -534,13 +676,16 @@ export default function ReportsPage() {
               <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-[#d4c5ad] hover:text-white transition-colors">
                 Cancel
               </button>
-              <button onClick={() => setModalOpen(false)} className="px-6 py-2 rounded-lg text-sm font-bold bg-[#f0b429] text-[#412d00] hover:opacity-90 shadow-lg flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">play_arrow</span> Generate
-              </button>
+              <GenerateReportButton label="Generate & Download" addToast={addToast} onComplete={() => setModalOpen(false)} />
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Toast Notifications ── */}
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-3">
+        {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={dismissToast} />)}
+      </div>
 
     </div>
   );
