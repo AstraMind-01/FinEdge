@@ -1,43 +1,39 @@
 package com.onlinebanking.transaction.service;
 
-import com.onlinebanking.transaction.dto.AmountRequest;
+import com.onlinebanking.transaction.dto.CreateRecurringRuleRequest;
 import com.onlinebanking.transaction.dto.DepositRequest;
-import com.onlinebanking.transaction.dto.FraudCheckRequest;
-import com.onlinebanking.transaction.dto.FraudCheckResponse;
 import com.onlinebanking.transaction.dto.InternalAccountResponse;
+import com.onlinebanking.transaction.dto.RecurringRuleResponse;
+import com.onlinebanking.transaction.dto.ScheduleTransferRequest;
+import com.onlinebanking.transaction.dto.ScheduledTransferResponse;
 import com.onlinebanking.transaction.dto.TransactionResponse;
 import com.onlinebanking.transaction.dto.TransferRequest;
 import com.onlinebanking.transaction.dto.WithdrawRequest;
+import com.onlinebanking.transaction.entity.RecurringRuleStatus;
+import com.onlinebanking.transaction.entity.RecurringTransferRule;
+import com.onlinebanking.transaction.entity.ScheduledTransfer;
+import com.onlinebanking.transaction.entity.ScheduledTransferStatus;
 import com.onlinebanking.transaction.entity.Transaction;
 import com.onlinebanking.transaction.entity.TransactionStatus;
 import com.onlinebanking.transaction.entity.TransactionType;
 import com.onlinebanking.transaction.event.TransactionProducer;
-import com.onlinebanking.transaction.exception.AccountInactiveException;
-import com.onlinebanking.transaction.exception.FraudBlockedException;
-import com.onlinebanking.transaction.exception.FraudServiceUnavailableException;
-import com.onlinebanking.transaction.exception.IdempotencyConflictException;
 import com.onlinebanking.transaction.exception.InsufficientBalanceException;
 import com.onlinebanking.transaction.exception.InvalidTransactionException;
 import com.onlinebanking.transaction.exception.TransactionNotFoundException;
+import com.onlinebanking.transaction.repository.RecurringTransferRuleRepository;
+import com.onlinebanking.transaction.repository.ScheduledTransferRepository;
 import com.onlinebanking.transaction.repository.TransactionRepository;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -47,7 +43,10 @@ public class TransactionService {
     private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
 
     private final TransactionRepository transactionRepository;
+    private final ScheduledTransferRepository scheduledTransferRepository;
+    private final RecurringTransferRuleRepository recurringTransferRuleRepository;
     private final TransactionProducer transactionProducer;
+    private final JwtService jwtService;
     private final RestTemplate restTemplate;
     private final SecureRandom random = new SecureRandom();
 
@@ -58,18 +57,18 @@ public class TransactionService {
     private String fraudServiceUrl;
 
     public TransactionResponse deposit(DepositRequest request, String username, String bearerToken) {
-        String currentFingerprint = computeFingerprint("DEPOSIT", request.amount(), null, request.toAccountNumber());
+        String currentFingerprint = TransactionIdempotencyHelper.computeFingerprint("DEPOSIT", request.amount(), null, request.toAccountNumber());
 
         if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
             Optional<Transaction> existing = transactionRepository
                     .findByIdempotencyKeyAndInitiatedByUsername(request.idempotencyKey(), username);
             if (existing.isPresent()) {
-                return validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
+                return TransactionIdempotencyHelper.validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
             }
         }
 
         InternalAccountResponse toAccount = fetchInternalAccount(request.toAccountNumber());
-        validateAccountActive(toAccount);
+        TransactionAccountHelper.validateAccountActive(toAccount);
 
         Transaction transaction = Transaction.builder()
                 .transactionRef(generateTransactionRef())
@@ -92,7 +91,7 @@ public class TransactionService {
             transaction.setCompletedAt(LocalDateTime.now());
             Transaction saved = transactionRepository.save(transaction);
             transactionProducer.publishEvent(saved);
-            return mapToResponse(saved);
+            return TransactionMapper.mapToResponse(saved);
         } catch (Exception e) {
             transaction.setStatus(TransactionStatus.FAILED);
             Transaction failed = transactionRepository.save(transaction);
@@ -102,19 +101,22 @@ public class TransactionService {
     }
 
     public TransactionResponse withdraw(WithdrawRequest request, String username, String bearerToken) {
-        String currentFingerprint = computeFingerprint("WITHDRAWAL", request.amount(), request.fromAccountNumber(), null);
+        String currentFingerprint = TransactionIdempotencyHelper.computeFingerprint("WITHDRAWAL", request.amount(), request.fromAccountNumber(), null);
 
         if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
             Optional<Transaction> existing = transactionRepository
                     .findByIdempotencyKeyAndInitiatedByUsername(request.idempotencyKey(), username);
             if (existing.isPresent()) {
-                return validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
+                return TransactionIdempotencyHelper.validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
             }
         }
 
         InternalAccountResponse fromAccount = fetchInternalAccount(request.fromAccountNumber());
-        validateOwnership(fromAccount, username);
-        validateAccountActive(fromAccount);
+        TransactionAccountHelper.validateOwnership(fromAccount, username);
+        TransactionAccountHelper.validateAccountActive(fromAccount);
+
+        // Validate Limits BEFORE Fraud Detection & Debit
+        validateTransactionLimits(request.fromAccountNumber(), fromAccount.accountType(), request.amount());
 
         if (fromAccount.balance().compareTo(request.amount()) < 0) {
             throw new InsufficientBalanceException("Insufficient funds. Available: " 
@@ -142,7 +144,7 @@ public class TransactionService {
             transaction.setCompletedAt(LocalDateTime.now());
             Transaction saved = transactionRepository.save(transaction);
             transactionProducer.publishEvent(saved);
-            return mapToResponse(saved);
+            return TransactionMapper.mapToResponse(saved);
         } catch (Exception e) {
             transaction.setStatus(TransactionStatus.FAILED);
             Transaction failed = transactionRepository.save(transaction);
@@ -156,22 +158,25 @@ public class TransactionService {
             throw new InvalidTransactionException("Source and destination account numbers cannot be the same");
         }
 
-        String currentFingerprint = computeFingerprint("TRANSFER", request.amount(), request.fromAccountNumber(), request.toAccountNumber());
+        String currentFingerprint = TransactionIdempotencyHelper.computeFingerprint("TRANSFER", request.amount(), request.fromAccountNumber(), request.toAccountNumber());
 
         if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
             Optional<Transaction> existing = transactionRepository
                     .findByIdempotencyKeyAndInitiatedByUsername(request.idempotencyKey(), username);
             if (existing.isPresent()) {
-                return validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
+                return TransactionIdempotencyHelper.validateIdempotencyFingerprint(existing.get(), currentFingerprint, request.idempotencyKey());
             }
         }
 
         InternalAccountResponse fromAccount = fetchInternalAccount(request.fromAccountNumber());
         InternalAccountResponse toAccount = fetchInternalAccount(request.toAccountNumber());
 
-        validateOwnership(fromAccount, username);
-        validateAccountActive(fromAccount);
-        validateAccountActive(toAccount);
+        TransactionAccountHelper.validateOwnership(fromAccount, username);
+        TransactionAccountHelper.validateAccountActive(fromAccount);
+        TransactionAccountHelper.validateAccountActive(toAccount);
+
+        // Validate Limits BEFORE Fraud Detection & Debit
+        validateTransactionLimits(request.fromAccountNumber(), fromAccount.accountType(), request.amount());
 
         if (fromAccount.balance().compareTo(request.amount()) < 0) {
             throw new InsufficientBalanceException("Insufficient funds for transfer. Available: " 
@@ -205,7 +210,7 @@ public class TransactionService {
             transaction.setCompletedAt(LocalDateTime.now());
             Transaction saved = transactionRepository.save(transaction);
             transactionProducer.publishEvent(saved);
-            return mapToResponse(saved);
+            return TransactionMapper.mapToResponse(saved);
         } catch (Exception e) {
             log.error("Transfer failed during execution. Debited: {}. Error: {}", debited, e.getMessage());
 
@@ -225,6 +230,123 @@ public class TransactionService {
         }
     }
 
+    private void validateTransactionLimits(String accountNumber, String accountTypeStr, BigDecimal amount) {
+        TransactionLimitValidator.validateTransactionLimits(transactionRepository, accountNumber, accountTypeStr, amount);
+    }
+
+    @Transactional
+    public ScheduledTransferResponse scheduleTransfer(ScheduleTransferRequest request, String username) {
+        if (request.fromAccountNumber().equalsIgnoreCase(request.toAccountNumber())) {
+            throw new InvalidTransactionException("Source and destination account numbers cannot be the same");
+        }
+        if (request.scheduledAt().isBefore(LocalDateTime.now())) {
+            throw new InvalidTransactionException("Scheduled execution time must be in the future");
+        }
+
+        InternalAccountResponse fromAccount = fetchInternalAccount(request.fromAccountNumber());
+        TransactionAccountHelper.validateOwnership(fromAccount, username);
+
+        ScheduledTransfer st = ScheduledTransfer.builder()
+                .fromAccountNumber(request.fromAccountNumber())
+                .toAccountNumber(request.toAccountNumber())
+                .amount(request.amount())
+                .description(request.description())
+                .scheduledAt(request.scheduledAt())
+                .status(ScheduledTransferStatus.PENDING)
+                .initiatedByUsername(username)
+                .build();
+
+        ScheduledTransfer saved = scheduledTransferRepository.save(st);
+        return TransactionMapper.mapToScheduledResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduledTransferResponse> getUserScheduledTransfers(String username) {
+        return scheduledTransferRepository.findByInitiatedByUsernameOrderByScheduledAtDesc(username).stream()
+                .map(TransactionMapper::mapToScheduledResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void cancelScheduledTransfer(Long id, String username) {
+        ScheduledTransfer st = scheduledTransferRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException("Scheduled transfer not found with ID: " + id));
+
+        if (!st.getInitiatedByUsername().equalsIgnoreCase(username)) {
+            throw new InvalidTransactionException("Access denied: You did not initiate this scheduled transfer");
+        }
+
+        st.setStatus(ScheduledTransferStatus.CANCELLED);
+        scheduledTransferRepository.save(st);
+    }
+
+    @Transactional
+    public void processDueScheduledTransfers() {
+        ScheduledTransferExecutionHelper.processDueScheduledTransfers(
+                scheduledTransferRepository,
+                (req, user) -> transfer(req, user, null)
+        );
+    }
+
+    @Transactional
+    public RecurringRuleResponse createRecurringRule(CreateRecurringRuleRequest request, String username) {
+        if (request.fromAccountNumber().equalsIgnoreCase(request.toAccountNumber())) {
+            throw new InvalidTransactionException("Source and destination account numbers cannot be the same");
+        }
+
+        InternalAccountResponse fromAccount = fetchInternalAccount(request.fromAccountNumber());
+        TransactionAccountHelper.validateOwnership(fromAccount, username);
+
+        LocalDateTime nextRun = request.startDate().isBefore(LocalDateTime.now()) ? LocalDateTime.now() : request.startDate();
+
+        RecurringTransferRule rule = RecurringTransferRule.builder()
+                .fromAccountNumber(request.fromAccountNumber())
+                .toAccountNumber(request.toAccountNumber())
+                .amount(request.amount())
+                .description(request.description())
+                .frequency(request.frequency())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
+                .maxOccurrences(request.maxOccurrences())
+                .completedOccurrences(0)
+                .consecutiveFailures(0)
+                .nextRunAt(nextRun)
+                .status(RecurringRuleStatus.ACTIVE)
+                .initiatedByUsername(username)
+                .build();
+
+        RecurringTransferRule saved = recurringTransferRuleRepository.save(rule);
+        return TransactionMapper.mapToRecurringResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecurringRuleResponse> getUserRecurringRules(String username) {
+        return recurringTransferRuleRepository.findByInitiatedByUsernameOrderByCreatedAtDesc(username).stream()
+                .map(TransactionMapper::mapToRecurringResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void cancelRecurringRule(Long id, String username) {
+        RecurringTransferRule rule = recurringTransferRuleRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException("Recurring rule not found with ID: " + id));
+
+        if (!rule.getInitiatedByUsername().equalsIgnoreCase(username)) {
+            throw new InvalidTransactionException("Access denied: You did not initiate this recurring rule");
+        }
+
+        rule.setStatus(RecurringRuleStatus.CANCELLED);
+        recurringTransferRuleRepository.save(rule);
+    }
+
+    @Transactional
+    public void processDueRecurringRules() {
+        ScheduledTransferExecutionHelper.processDueRecurringRules(
+                recurringTransferRuleRepository,
+                (req, user) -> transfer(req, user, null)
+        );
+    }
+
     public TransactionResponse getTransactionById(Long id, String username) {
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found with ID: " + id));
@@ -233,126 +355,45 @@ public class TransactionService {
             throw new InvalidTransactionException("Access denied: You did not initiate this transaction");
         }
 
-        return mapToResponse(transaction);
+        return TransactionMapper.mapToResponse(transaction);
     }
 
     public List<TransactionResponse> getUserTransactionHistory(String username) {
         return transactionRepository.findByInitiatedByUsernameOrderByCreatedAtDesc(username)
                 .stream()
-                .map(this::mapToResponse)
+                .map(TransactionMapper::mapToResponse)
+                .toList();
+    }
+
+    public List<TransactionResponse> getRecentGlobalTransactions() {
+        return transactionRepository.findTop10ByOrderByCreatedAtDesc()
+                .stream()
+                .map(TransactionMapper::mapToResponse)
                 .toList();
     }
 
     private void evaluateFraudRisk(Transaction transaction, String bearerToken) {
-        FraudCheckResponse response = checkFraudRisk(transaction, bearerToken);
-
-        transaction.setRiskScore(response.riskScore());
-        transaction.setRiskDecision(response.decision());
-        transaction.setRiskIndicators(response.indicators() != null ? String.join(", ", response.indicators()) : "");
-        transaction.setFraudCheckedAt(LocalDateTime.now());
-
-        if ("HIGH_RISK".equalsIgnoreCase(response.decision())) {
-            log.warn("BLOCKING TRANSACTION [{}]: High risk fraud decision (Score: {})",
-                    transaction.getTransactionRef(), response.riskScore());
-            transaction.setStatus(TransactionStatus.FAILED);
-            Transaction failed = transactionRepository.save(transaction);
-            transactionProducer.publishEvent(failed);
-            throw new FraudBlockedException("Transaction blocked: High risk fraud detected (Risk Score: " + response.riskScore() + ")");
-        }
-
-        if ("REVIEW".equalsIgnoreCase(response.decision())) {
-            log.warn("FLAGGING TRANSACTION [{}] FOR MANUAL REVIEW (Risk Score: {})",
-                    transaction.getTransactionRef(), response.riskScore());
-        }
-
-        transactionRepository.save(transaction);
-    }
-
-    private FraudCheckResponse checkFraudRisk(Transaction transaction, String bearerToken) {
-        try {
-            String url = fraudServiceUrl + "/api/v1/fraud/check";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            if (bearerToken != null && !bearerToken.isBlank()) {
-                headers.set("Authorization", bearerToken.startsWith("Bearer ") ? bearerToken : "Bearer " + bearerToken);
-            }
-
-            FraudCheckRequest payload = new FraudCheckRequest(
-                    transaction.getTransactionRef(),
-                    transaction.getType().name(),
-                    transaction.getFromAccountNumber(),
-                    transaction.getToAccountNumber(),
-                    transaction.getAmount(),
-                    transaction.getInitiatedByUsername(),
-                    transaction.getCreatedAt().toString()
-            );
-
-            HttpEntity<FraudCheckRequest> entity = new HttpEntity<>(payload, headers);
-            ResponseEntity<FraudCheckResponse> response = restTemplate.postForEntity(url, entity, FraudCheckResponse.class);
-            return response.getBody();
-        } catch (Exception e) {
-            log.error("Fail-Closed Policy: Fraud detection service unreachable or timed out for transaction [{}]: {}",
-                    transaction.getTransactionRef(), e.getMessage());
-            throw new FraudServiceUnavailableException("Transaction failed: Fraud detection service is unavailable or timed out.");
-        }
-    }
-
-    private TransactionResponse validateIdempotencyFingerprint(Transaction existing, String currentFingerprint, String idempotencyKey) {
-        if (currentFingerprint.equals(existing.getRequestFingerprint())) {
-            log.info("Idempotency match found for key: {}. Returning original response.", idempotencyKey);
-            return mapToResponse(existing);
-        } else {
-            log.warn("IDEMPOTENCY_CONFLICT: Key [{}] presented with mismatching request payload.", idempotencyKey);
-            throw new IdempotencyConflictException("IDEMPOTENCY_CONFLICT: Idempotency key '" + idempotencyKey 
-                    + "' was previously used with different request parameters.");
-        }
-    }
-
-    private String computeFingerprint(String type, BigDecimal amount, String fromAcc, String toAcc) {
-        String raw = String.format("TYPE=%s|AMT=%s|FROM=%s|TO=%s",
-                type,
-                amount != null ? amount.stripTrailingZeros().toPlainString() : "NULL",
-                fromAcc != null ? fromAcc : "NULL",
-                toAcc != null ? toAcc : "NULL");
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            return raw;
-        }
+        TransactionFraudHelper.evaluateFraudRisk(
+                transaction,
+                bearerToken,
+                restTemplate,
+                fraudServiceUrl,
+                jwtService,
+                transactionRepository,
+                transactionProducer
+        );
     }
 
     private InternalAccountResponse fetchInternalAccount(String accountNumber) {
-        try {
-            String url = accountServiceUrl + "/api/v1/accounts/internal/" + accountNumber;
-            ResponseEntity<InternalAccountResponse> response = restTemplate.getForEntity(url, InternalAccountResponse.class);
-            return response.getBody();
-        } catch (Exception e) {
-            throw new InvalidTransactionException("Account not found or inaccessible: " + accountNumber);
-        }
+        return TransactionAccountHelper.fetchInternalAccount(restTemplate, accountServiceUrl, accountNumber);
     }
 
     private void debitAccount(String accountNumber, BigDecimal amount) {
-        String url = accountServiceUrl + "/api/v1/accounts/internal/" + accountNumber + "/debit";
-        restTemplate.postForEntity(url, new AmountRequest(amount), InternalAccountResponse.class);
+        TransactionAccountHelper.debitAccount(restTemplate, accountServiceUrl, accountNumber, amount);
     }
 
     private void creditAccount(String accountNumber, BigDecimal amount) {
-        String url = accountServiceUrl + "/api/v1/accounts/internal/" + accountNumber + "/credit";
-        restTemplate.postForEntity(url, new AmountRequest(amount), InternalAccountResponse.class);
-    }
-
-    private void validateOwnership(InternalAccountResponse account, String username) {
-        if (!account.ownerUsername().equalsIgnoreCase(username)) {
-            throw new InvalidTransactionException("Access denied: You do not own account " + account.accountNumber());
-        }
-    }
-
-    private void validateAccountActive(InternalAccountResponse account) {
-        if (!"ACTIVE".equalsIgnoreCase(account.status())) {
-            throw new AccountInactiveException("Account " + account.accountNumber() + " is currently " + account.status());
-        }
+        TransactionAccountHelper.creditAccount(restTemplate, accountServiceUrl, accountNumber, amount);
     }
 
     private String generateTransactionRef() {
@@ -361,20 +402,5 @@ public class TransactionService {
             ref = "TXN-" + System.currentTimeMillis() + "-" + (1000 + random.nextInt(9000));
         } while (transactionRepository.existsByTransactionRef(ref));
         return ref;
-    }
-
-    private TransactionResponse mapToResponse(Transaction t) {
-        return new TransactionResponse(
-                t.getId(),
-                t.getTransactionRef(),
-                t.getType(),
-                t.getFromAccountNumber(),
-                t.getToAccountNumber(),
-                t.getAmount(),
-                t.getStatus(),
-                t.getInitiatedByUsername(),
-                t.getCreatedAt(),
-                t.getCompletedAt()
-        );
     }
 }

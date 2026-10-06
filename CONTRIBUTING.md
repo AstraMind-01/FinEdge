@@ -26,4 +26,12 @@ We use conventional commit messages. Please prefix your commits with one of the 
 - `refactor:` for code changes that neither fix a bug nor add a feature
 - `chore:` for routine tasks like updating dependencies or configuration
 
+---
+
+## 🌟 Core Contributors & Maintainers
+
+- **[Soumyadip Singha](https://github.com/Simply-Coder-start)** ([@Simply-Coder-start](https://github.com/Simply-Coder-start)) — Core Contributor & Full-Stack Architect
+- **[Pritam Sahoo](https://github.com/pritamsahoo902)** ([@AstraMind-01](https://github.com/AstraMind-01)) — Co-Maintainer & Infrastructure Lead
+
 Happy coding!
+

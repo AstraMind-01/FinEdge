@@ -5,17 +5,23 @@ from app.config.settings import settings
 from app.model.model_loader import load_model
 from app.middleware.correlation import CorrelationIdMiddleware, CorrelationIdLogFilter
 
-# Step 15: Updated logging format to include correlation ID from ContextVar.
-# The CorrelationIdLogFilter injects %(correlationId)s into every log record.
-# Outside a request context (e.g. startup), defaults to "none".
-log_filter = CorrelationIdLogFilter()
+class CorrelationIdFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "correlationId"):
+            record.correlationId = "none"
+        return super().format(record)
 
-logging.basicConfig(
-    level=settings.LOG_LEVEL,
-    format="%(asctime)s [cid=%(correlationId)s] %(levelname)s %(name)s - %(message)s"
+log_filter = CorrelationIdLogFilter()
+formatter = CorrelationIdFormatter(
+    "%(asctime)s [cid=%(correlationId)s] %(levelname)s %(name)s - %(message)s"
 )
-# Attach the filter to the root logger so all loggers inherit it
-logging.getLogger().addFilter(log_filter)
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+root_logger = logging.getLogger()
+root_logger.handlers = [handler]
+root_logger.setLevel(settings.LOG_LEVEL)
+root_logger.addFilter(log_filter)
 
 logger = logging.getLogger(__name__)
 

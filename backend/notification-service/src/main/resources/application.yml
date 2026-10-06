@@ -5,17 +5,25 @@ spring:
   application:
     name: notification-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/${DB_NAME:notification_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
+    url: "${SPRING_DATASOURCE_URL:jdbc:h2:mem:notification_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS notification_service}"
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+      default_schema: ${HIBERNATE_DEFAULT_SCHEMA:notification_service}
     properties:
       hibernate:
+        default_schema: ${HIBERNATE_DEFAULT_SCHEMA:notification_service}
         format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+    show-sql: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -38,4 +46,3 @@ app:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [cid=%X{correlationId:-none}] %-5level %logger{36} - %msg%n"
-

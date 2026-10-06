@@ -35,15 +35,26 @@ public class JwtService {
         return claims.get("role", String.class);
     }
 
+    public String extractKycStatus(String token) {
+        Claims claims = extractAllClaims(token);
+        String kycStatus = claims.get("kycStatus", String.class);
+        return kycStatus != null ? kycStatus : "NOT_SUBMITTED";
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(String username, String role) {
+    public String generateToken(String username, String role, String kycStatus) {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", role);
+        extraClaims.put("kycStatus", kycStatus != null ? kycStatus : "NOT_SUBMITTED");
         return buildToken(extraClaims, username, jwtExpiration);
+    }
+
+    public String generateToken(String username, String role) {
+        return generateToken(username, role, "NOT_SUBMITTED");
     }
 
     public String generateRefreshToken(String username) {
@@ -61,6 +72,7 @@ public class JwtService {
     private String buildToken(Map<String, Object> extraClaims, String username, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))

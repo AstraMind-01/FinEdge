@@ -57,7 +57,7 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
     private static final Logger logger = LoggerFactory.getLogger(RateLimitFilter.class);
 
     /** Max requests allowed per sliding window. */
-    private static final int MAX_REQUESTS = 10;
+    private static final int MAX_REQUESTS = 100;
 
     /** Sliding window duration in milliseconds. */
     private static final long WINDOW_MS = 10_000L;

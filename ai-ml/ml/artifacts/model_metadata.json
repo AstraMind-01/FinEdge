@@ -1,0 +1,40 @@
+{
+  "step": "Step 12 \u2014 Model Training",
+  "production_model": "xgboost_v1.pkl",
+  "training_date_utc": "2026-08-08T15:07:49.792810Z",
+  "data_source": "SYNTHETIC \u2014 Kaggle CSVs not present",
+  "n_total_rows": 10000,
+  "n_train_rows": 8000,
+  "n_val_rows": 2000,
+  "fraud_rate_overall": 0.035,
+  "fraud_rate_train": 0.035,
+  "fraud_rate_val": 0.035,
+  "n_features_tree_path": 31,
+  "n_features_lr_path": 60,
+  "smote_used": false,
+  "smote_note": "SMOTE intentionally excluded as default strategy. Reason: must be applied inside CV folds to prevent leakage; class-weighting approaches used instead (simpler, leakage-free). imbalanced-learn remains in requirements for optional future experiments.",
+  "models": [
+    {
+      "model_name": "Logistic Regression",
+      "artifact": "logistic_regression_v1.pkl",
+      "preprocessor_artifact": "lr_preprocessor_v1.pkl",
+      "imbalance_strategy": "class_weight='balanced'",
+      "train_time_seconds": 0.02
+    },
+    {
+      "model_name": "Random Forest",
+      "artifact": "random_forest_v1.pkl",
+      "preprocessor_artifact": "tree_preprocessor_v1.pkl",
+      "imbalance_strategy": "class_weight='balanced_subsample'",
+      "train_time_seconds": 0.51
+    },
+    {
+      "model_name": "XGBoost",
+      "artifact": "xgboost_v1.pkl",
+      "preprocessor_artifact": "tree_preprocessor_v1.pkl",
+      "imbalance_strategy": "scale_pos_weight=27.57",
+      "train_time_seconds": 1.86
+    }
+  ],
+  "hyperparameter_tuning": "None \u2014 fixed reasonable defaults used. Grid/random search noted as future enhancement."
+}

@@ -47,6 +47,14 @@ public class Account {
     @Column(nullable = false)
     private AccountStatus status;
 
+    private String frozenReason;
+
+    private LocalDateTime frozenAt;
+
+    private String frozenBy;
+
+    private LocalDateTime closedAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

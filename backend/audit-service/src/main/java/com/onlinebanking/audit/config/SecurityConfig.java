@@ -23,9 +23,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers.frameOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig::disable))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/health").permitAll()
+                        .requestMatchers("/api/v1/health", "/h2-console/**").permitAll()
                         .requestMatchers("/api/v1/audit-logs/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

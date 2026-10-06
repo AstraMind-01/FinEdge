@@ -25,10 +25,10 @@ def get_test_jwt() -> str:
 def test_health_check():
     response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json() == {
-        "service": "fraud-detection-service",
-        "status": "UP"
-    }
+    data = response.json()
+    assert data["service"] == "fraud-detection-service"
+    assert data["status"] == "UP"
+    assert "modelStatus" in data
 
 
 def test_fraud_check_stub_authenticated():
@@ -46,8 +46,8 @@ def test_fraud_check_stub_authenticated():
     assert response.status_code == 200
     data = response.json()
     assert data["transactionRef"] == "TXN-TEST-100"
-    assert data["decision"] == "HIGH_RISK"
-    assert data["riskScore"] == 85.0
+    assert data["decision"] in ("LOW_RISK", "REVIEW", "HIGH_RISK")
+    assert 0.0 <= data["riskScore"] <= 100.0
 
 
 def test_fraud_check_unauthenticated():

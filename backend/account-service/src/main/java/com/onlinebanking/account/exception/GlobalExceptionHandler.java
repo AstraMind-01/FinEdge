@@ -47,6 +47,30 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
+    public ResponseEntity<ErrorResponse> handleBusinessPolicyException(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "BAD_REQUEST",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(KycNotVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleKycNotVerifiedException(
+            KycNotVerifiedException ex, HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "KYC_NOT_VERIFIED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler({UnauthorizedAccessException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorizedAccessException(
             Exception ex, HttpServletRequest request) {

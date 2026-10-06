@@ -9,6 +9,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/health", status_code=status.HTTP_200_OK)
+@router.get("/fraud/health", status_code=status.HTTP_200_OK)
 def health_check():
     """
     Health check endpoint.
@@ -31,4 +32,3 @@ def check_fraud(
     token_payload: dict = Depends(verify_jwt_token)
 ):
     return fraud_service.evaluate_transaction(request)
-

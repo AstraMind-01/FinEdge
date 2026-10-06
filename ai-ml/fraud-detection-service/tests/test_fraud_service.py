@@ -94,6 +94,8 @@ def test_fraud_check_ml_mode_response_shape():
     """
     from app.model import model_loader
     if not model_loader.is_model_loaded():
+        model_loader.load_model(REAL_ARTIFACTS_DIR)
+    if not model_loader.is_model_loaded():
         pytest.skip(
             "ML model not loaded (artifacts not present or load failed). "
             "Run ml/training/train_models.py first, then re-run tests."
@@ -126,6 +128,8 @@ def test_fraud_check_ml_mode_response_shape():
 def test_fraud_check_ml_mode_modelversion_not_stub():
     """Verify modelVersion reflects the real model artifact name when loaded."""
     from app.model import model_loader
+    if not model_loader.is_model_loaded():
+        model_loader.load_model(REAL_ARTIFACTS_DIR)
     if not model_loader.is_model_loaded():
         pytest.skip("ML model not loaded — skipping.")
 

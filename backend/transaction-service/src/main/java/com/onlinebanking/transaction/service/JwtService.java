@@ -26,6 +26,19 @@ public class JwtService {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    public String generateSystemToken(String username) {
+        java.util.Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("role", "SYSTEM");
+        claims.put("kycStatus", "VERIFIED");
+        return Jwts.builder()
+                .claims(claims)
+                .subject(username != null ? username : "system_scheduler")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .signWith(getSignInKey())
+                .compact();
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         return claimsResolver.apply(extractAllClaims(token));
     }

@@ -15,6 +15,9 @@ public record TransactionResponse(
         TransactionStatus status,
         String initiatedByUsername,
         LocalDateTime createdAt,
-        LocalDateTime completedAt
+        LocalDateTime completedAt,
+        Double riskScore,
+        String riskDecision,
+        String riskIndicators
 ) {
 }

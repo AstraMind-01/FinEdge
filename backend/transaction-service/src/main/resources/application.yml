@@ -5,17 +5,25 @@ spring:
   application:
     name: transaction-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:transaction_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
+    url: "${SPRING_DATASOURCE_URL:jdbc:h2:mem:transaction_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS transaction_service}"
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+      default_schema: ${HIBERNATE_DEFAULT_SCHEMA:transaction_service}
     properties:
       hibernate:
+        default_schema: ${HIBERNATE_DEFAULT_SCHEMA:transaction_service}
         format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+    show-sql: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -23,6 +31,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+        max.block.ms: 500
 
 jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
@@ -42,4 +51,3 @@ app:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [cid=%X{correlationId:-none}] %-5level %logger{36} - %msg%n"
-

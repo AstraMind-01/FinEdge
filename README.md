@@ -1,67 +1,115 @@
-# FinEdge
+# FinEdge — Intelligent Banking & Payment Platform
 
-AI-Powered Banking & Fraud Detection Platform
+FinEdge is an enterprise-grade, microservices-based banking and real-time AI fraud detection platform built with Java 21 Spring Boot, Python FastAPI, XGBoost Machine Learning, Apache Kafka, and PostgreSQL.
 
-## 1. Project Overview
-FinEdge is an intelligent, microservices-based banking and payment platform that integrates real-time transaction processing with AI-driven fraud detection. 
+---
 
-## 2. Architecture
-The system follows a microservices architecture:
-- **Frontend**: A React-based web application for customers and admins.
-- **API Gateway**: Routes traffic to backend services.
-- **Backend Services**: Java Spring Boot microservices handling core banking functionality (Auth, Account, Transaction, Notification, Audit).
-- **AI/ML Service**: A Python/FastAPI service for evaluating transactions through a machine-learning model (XGBoost/Scikit-learn).
-- **Databases**: Individual PostgreSQL databases per service following the database-per-service pattern.
-- **Event Bus**: Kafka is used for asynchronous communication between services (e.g., triggering notifications upon transactions).
+## Architecture At A Glance
 
-## 3. Repository Structure
-The repository is organized as a monorepo so that cross-functional teams can work independently:
-- `frontend/` - React application code
-- `backend/` - Java Spring Boot microservices
-- `ai-ml/` - Python ML and fraud detection service
-- `database/` - PostgreSQL schemas and migrations
-- `infrastructure/` - Docker, Kafka, and deployment configurations
-- `docs/` - Architecture diagrams, API specs, and project reports
-- `tests/` - Integration and E2E testing
-- `.github/` - GitHub Actions workflows and PR templates
+```
+                                  +-----------------------+
+                                  |   React Frontend /    |
+                                  |   Postman Test Suite  |
+                                  +-----------+-----------+
+                                              |
+                                              v
+                                  +-----------------------+
+                                  |   API Gateway (:8080) |
+                                  +-----------+-----------+
+                                              |
+     +-------------------+--------------------+--------------------+
+     |                   |                    |                    |
+     v                   v                    v                    v
++----+---------+   +-----+--------+    +------+-------+     +------+-------+
+| Auth Service |   | Account Svc  |    | Transaction  |     | Fraud Detection
+|   (:8081)    |   |   (:8082)    |    |   Service    |     | Service (FastAPI)
++----+---------+   +-----+--------+    |   (:8083)    |     |   (:8086)    |
+     |                   |             +------+-------+     +--------------+
+     v                   v                    | (Sync REST)        ^
+  [auth_db]         [account_db]              +--------------------+
+                                              | (Kafka Publish)
+                                              v
+                                     +-----------------+
+                                     |  Apache Kafka   |
+                                     +---+---------+---+
+                                         |         |
+                                         v         v
+                                  +------+--+   +--+-----------+
+                                  | Notif   |   | Audit Service|
+                                  | Service |   |   (:8085)    |
+                                  +---------+   +--------------+
+```
 
-## 4. Technology Stack
-- **Frontend**: React, Vite, Tailwind CSS (or Vanilla CSS)
-- **Backend**: Java 21, Spring Boot 3.x, Spring Cloud
-- **AI/ML**: Python, FastAPI, Pandas, Scikit-learn, XGBoost
-- **Databases**: PostgreSQL
-- **Messaging**: Apache Kafka, Zookeeper
-- **Infrastructure**: Docker, Docker Compose
+---
 
-## 5. How Frontend Works
-The frontend is built with React and Vite. It connects to the API Gateway to perform authentication, view accounts, and manage transactions. Developers working on the frontend own the `frontend/` directory.
+## 17-Step Implementation Journey Narrative
 
-## 6. How Backend Works
-The backend is a suite of Java Spring Boot microservices. Each service is independently buildable via Maven. Developers modify services inside the `backend/` directory. The parent `pom.xml` in `backend/` manages dependencies for all modules.
+1. **Step 1: Monorepo & Maven Multi-Module Setup** — Established project structure (`backend/`, `ai-ml/`, `infrastructure/`) and root pom dependencies.
+2. **Step 2: Database Schema & Migration Specs** — Designed PostgreSQL database-per-service schemas for Auth, Account, Transaction, Notification, and Audit.
+3. **Step 3: Docker & Infrastructure Orchestration** — Configured containerized Zookeeper, Kafka broker, and 5 PostgreSQL DB instances in `docker-compose.yml`.
+4. **Step 4: Auth Service & JWT Security** — Developed registration, login, BCrypt password hashing, and stateless JWT token issuance.
+5. **Step 5: API Gateway & Rate Limiting** — Implemented central routing, JWT verification filter, and IP/token rate limiting.
+6. **Step 6: Account Service & Balance Management** — Implemented account lifecycle, balance inquiry, and debit/credit ledger updates.
+7. **Step 7: Machine Learning Data Pipeline** — Built dataset cleaning, missing value handling, feature engineering, and categorical encoding pipeline.
+8. **Step 8: Fraud Detection ML Model Training** — Trained XGBoost/Scikit-learn model, evaluated ROC-AUC & precision/recall, and serialized model artifacts.
+9. **Step 9: Python FastAPI Fraud Detection Microservice** — Created high-throughput FastAPI inference endpoint, schema validation, and health checks.
+10. **Step 10: Model Artifact & Inference Integration** — Connected FastAPI service to trained ML model artifacts with fallback scoring logic.
+11. **Step 11: Transaction Service Core & RestTemplate Integration** — Built transaction processing engine with synchronous REST calls to Fraud Service.
+12. **Step 12: Fraud Policy & Fail-Closed Safety** — Implemented risk threshold enforcement, high-risk blocking, and fail-closed policy during AI service downtime.
+13. **Step 13: Distributed Idempotency Control** — Enforced client-side idempotency keys and key-reuse mismatch protection (`409 Conflict`).
+14. **Step 14: Kafka Event Producer & Async Messaging** — Integrated Kafka event publishing (`transaction-events`) upon transaction state change.
+15. **Step 15: Notification Service Kafka Consumer** — Developed notification consumer service listening to Kafka events for customer alert generation.
+16. **Step 16: Audit Log Service & Append-Only Storage** — Built dedicated audit service storing immutable event records for compliance and forensics.
+17. **Step 17: End-to-End Verification & Test Automation** — Verified full system end-to-end with unit test suites and integration verification scripts.
 
-## 7. How AI/ML Works
-The AI/ML component lives in `ai-ml/`. It includes training scripts, Jupyter notebooks, and a production FastAPI service (`fraud-detection-service`) that evaluates incoming transactions in real time.
+---
 
-## 8. Database Architecture
-Each microservice maintains its own database (e.g., `auth_db`, `account_db`) in PostgreSQL. Schemas and migrations are stored in the `database/` folder to separate infrastructure definitions from application code.
+## Running The Platform locally
 
-## 9. Kafka Architecture
-Kafka serves as the event backbone. For example, when a transaction occurs, an event is produced to a Kafka topic which the Notification and Audit services consume. Configuration is maintained in `infrastructure/docker-compose.yml`.
+### Prerequisites
+- Java 21 JDK
+- Python 3.10+
+- Apache Maven 3.8+
+- Docker & Docker Compose
 
-## 10. Docker Setup
-All infrastructure components (Kafka, Zookeeper, PostgreSQL instances) and the AI/ML service are containerized. You can spin up the environment from the `infrastructure/` directory using Docker Compose.
+### 1. Infrastructure Startup
+```bash
+cd infrastructure
+docker-compose up -d
+```
 
-## 11. Local Development
-- Ensure Docker is running.
-- Start infrastructure: `cd infrastructure && docker-compose up -d`
-- Start backend services: Navigate to `backend/` and run `mvn spring-boot:run` for each service, or use the provided scripts in `infrastructure/scripts/`.
-- Start frontend: Navigate to `frontend/` and run `npm run dev`.
+### 2. Backend Microservices Build & Run
+```bash
+# Test & Build
+cd backend
+mvn clean package
 
-## 12. Team Contribution
-- **Developer 1 (Team Lead)**: Owns `backend/transaction-service/`, overall integration, and architecture.
-- **Developer 2 (Backend)**: Owns `backend/auth-service/` and `backend/account-service/`.
-- **Developer 3 (AI/ML)**: Owns `ai-ml/`.
-- **Developer 4 (Frontend + DevOps)**: Owns `frontend/` and `infrastructure/`.
+# Start All Services (PowerShell)
+..\infrastructure\scripts\start-all-visible.ps1
+```
 
-## 13. GitHub Workflow
-All work should be done in feature branches (e.g., `feature/transaction-service`, `feature/fraud-ml`) and merged into `main` via Pull Requests. Do not push directly to `main`. CI/CD workflows in `.github/workflows/` automatically build and test code upon push.
+### 3. Run AI/ML Fraud Service
+```bash
+cd ai-ml/fraud-detection-service
+python -m uvicorn app.main:app --port 8086 --reload
+```
+
+### 4. Run End-to-End Test Suite
+```bash
+python infrastructure/scripts/e2e_integration_test.py
+```
+
+---
+
+## Documentation & Viva Resources
+- 📋 [Viva Defense Cheat Sheet](docs/viva_cheat_sheet.md)
+- 📐 [Architecture & Component Diagram](docs/architecture_diagram.md)
+
+---
+
+## 👥 Contributors
+
+Special thanks to the core contributors and engineers of FinEdge:
+
+- **[Soumyadip Singha](https://github.com/Simply-Coder-start)** ([@Simply-Coder-start](https://github.com/Simply-Coder-start)) — Core Architecture, Full-Stack Microservices, Real-Time AI Fraud Engine, Modularization & Next.js Frontend
+- **[Pritam Sahoo](https://github.com/pritamsahoo902)** ([@AstraMind-01](https://github.com/AstraMind-01)) — Project Setup, Monorepo Architecture & DevOps Pipelines

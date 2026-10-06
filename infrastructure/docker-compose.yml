@@ -37,101 +37,7 @@ services:
       timeout: 5s
       retries: 5
 
-  auth-db:
-    image: postgres:16-alpine
-    container_name: auth-db
-    environment:
-      POSTGRES_DB: auth_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5431:5432"
-    volumes:
-      - postgres_auth_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d auth_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  account-db:
-    image: postgres:16-alpine
-    container_name: account-db
-    environment:
-      POSTGRES_DB: account_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_account_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d account_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  transaction-db:
-    image: postgres:16-alpine
-    container_name: transaction-db
-    environment:
-      POSTGRES_DB: transaction_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_transaction_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d transaction_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  notification-db:
-    image: postgres:16-alpine
-    container_name: notification-db
-    environment:
-      POSTGRES_DB: notification_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres_notification_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d notification_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  audit-db:
-    image: postgres:16-alpine
-    container_name: audit-db
-    environment:
-      POSTGRES_DB: audit_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_audit_data:/var/lib/postgresql/data
-    networks:
-      - banking-network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d audit_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
+  # Step 22: Python AI Fraud Detection Microservice with Supabase schema support
   fraud-detection-service:
     build:
       context: ../ai-ml/fraud-detection-service
@@ -141,17 +47,16 @@ services:
       - "8086:8086"
     environment:
       - PORT=8086
-      - MODEL_VERSION=stub-v0
+      - MODEL_VERSION=xgboost_v1
+      - SUPABASE_HOST=${SUPABASE_HOST}
+      - SUPABASE_PORT=${SUPABASE_PORT:-5432}
+      - SUPABASE_DB=${SUPABASE_DB:-postgres}
+      - SUPABASE_USER=${SUPABASE_USER:-postgres}
+      - SUPABASE_PASSWORD=${SUPABASE_PASSWORD}
+      - SUPABASE_SCHEMA=fraud_service
     networks:
       - banking-network
 
 networks:
   banking-network:
     driver: bridge
-
-volumes:
-  postgres_auth_data:
-  postgres_account_data:
-  postgres_transaction_data:
-  postgres_notification_data:
-  postgres_audit_data:

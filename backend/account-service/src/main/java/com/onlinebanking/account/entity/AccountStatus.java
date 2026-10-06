@@ -12,5 +12,6 @@ package com.onlinebanking.account.entity;
 public enum AccountStatus {
     ACTIVE,
     INACTIVE,
-    FROZEN
+    FROZEN,
+    CLOSED
 }

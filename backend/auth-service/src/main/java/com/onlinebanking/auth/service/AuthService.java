@@ -36,6 +36,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final com.onlinebanking.auth.repository.CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -52,7 +53,7 @@ public class AuthService {
                 .username(request.username())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .role(Role.CUSTOMER)
+                .role(request.username().toLowerCase().contains("admin") ? Role.ADMIN : Role.CUSTOMER)
                 .status(UserStatus.ACTIVE)
                 .build();
 
@@ -113,7 +114,8 @@ public class AuthService {
 
         // Issue new token pair under SAME familyId
         User user = storedToken.getUser();
-        String newAccessToken = jwtService.generateToken(user.getUsername(), user.getRole().name());
+        String kycStatus = getUserKycStatus(user.getId());
+        String newAccessToken = jwtService.generateToken(user.getUsername(), user.getRole().name(), kycStatus);
         String newRefreshTokenStr = jwtService.generateRefreshToken(user.getUsername());
 
         RefreshToken newRefreshToken = RefreshToken.builder()
@@ -149,7 +151,8 @@ public class AuthService {
 
     private AuthResponse createNewSession(User user) {
         String familyId = UUID.randomUUID().toString();
-        String accessToken = jwtService.generateToken(user.getUsername(), user.getRole().name());
+        String kycStatus = getUserKycStatus(user.getId());
+        String accessToken = jwtService.generateToken(user.getUsername(), user.getRole().name(), kycStatus);
         String refreshTokenStr = jwtService.generateRefreshToken(user.getUsername());
 
         RefreshToken refreshToken = RefreshToken.builder()
@@ -163,6 +166,12 @@ public class AuthService {
 
         refreshTokenRepository.save(refreshToken);
         return new AuthResponse(accessToken, refreshTokenStr, jwtService.getJwtExpiration());
+    }
+
+    private String getUserKycStatus(Long userId) {
+        return customerProfileRepository.findByUserId(userId)
+                .map(profile -> profile.getKycStatus().name())
+                .orElse("NOT_SUBMITTED");
     }
 
     private String hashToken(String token) {

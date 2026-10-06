@@ -26,6 +26,11 @@ public class JwtService {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    public String extractKycStatus(String token) {
+        String kycStatus = extractAllClaims(token).get("kycStatus", String.class);
+        return kycStatus != null ? kycStatus : "NOT_SUBMITTED";
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         return claimsResolver.apply(extractAllClaims(token));
     }

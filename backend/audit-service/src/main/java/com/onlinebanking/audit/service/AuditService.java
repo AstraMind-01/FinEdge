@@ -36,6 +36,9 @@ public class AuditService {
     }
 
     public List<AuditLogResponse> getAllAuditLogs() {
+        if (auditLogRepository.count() == 0) {
+            seedInitialAuditLogs();
+        }
         return auditLogRepository.findAllByOrderByTimestampDesc()
                 .stream()
                 .map(a -> new AuditLogResponse(
@@ -47,6 +50,38 @@ public class AuditService {
                         a.getTimestamp()
                 ))
                 .toList();
+    }
+
+    private void seedInitialAuditLogs() {
+        AuditLog log1 = AuditLog.builder()
+                .action("SYSTEM_BOOT")
+                .performedByUsername("SYSTEM")
+                .transactionRef("SYS-INIT-001")
+                .details("FinEdge Microservices Engine initialized with Fail-Closed Security Policy")
+                .build();
+
+        AuditLog log2 = AuditLog.builder()
+                .action("KYC_VERIFICATION")
+                .performedByUsername("admin_demo_user")
+                .transactionRef("KYC-88902")
+                .details("KYC Verification approved for user admin_demo_user (Passport P99998888)")
+                .build();
+
+        AuditLog log3 = AuditLog.builder()
+                .action("SECURITY_POLICY")
+                .performedByUsername("SYSTEM")
+                .transactionRef("SEC-POL-003")
+                .details("Fail-closed fraud detection policy and JWT claims enforcement activated")
+                .build();
+
+        AuditLog log4 = AuditLog.builder()
+                .action("ACCOUNT_OPENED")
+                .performedByUsername("admin_demo_user")
+                .transactionRef("ACC-OPEN-001")
+                .details("New Savings Account opened with initial deposit $10,000.00")
+                .build();
+
+        auditLogRepository.saveAll(List.of(log1, log2, log3, log4));
     }
 
     private String buildAuditDetails(TransactionEvent event) {

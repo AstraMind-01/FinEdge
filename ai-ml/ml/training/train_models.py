@@ -446,6 +446,7 @@ def main():
     # ── 6. Write model_metadata.json ─────────────────────────────────────
     metadata = {
         "step": "Step 12 — Model Training",
+        "production_model": "xgboost_v1.pkl",
         "training_date_utc": datetime.utcnow().isoformat() + "Z",
         "data_source": "SYNTHETIC — Kaggle CSVs not present" if using_synthetic else "IEEE-CIS Fraud Detection (Kaggle)",
         "n_total_rows": n_total,

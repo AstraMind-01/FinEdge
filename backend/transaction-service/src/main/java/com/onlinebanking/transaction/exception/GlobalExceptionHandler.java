@@ -58,6 +58,18 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(TransactionLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleTransactionLimitExceededException(
+            TransactionLimitExceededException ex, HttpServletRequest request) {
+        ErrorResponse response = new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "LIMIT_EXCEEDED",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(FraudServiceUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleFraudServiceUnavailableException(
             FraudServiceUnavailableException ex, HttpServletRequest request) {

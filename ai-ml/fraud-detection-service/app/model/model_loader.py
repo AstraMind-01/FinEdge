@@ -249,9 +249,17 @@ def predict_fraud_probability(feature_df) -> float:
 
         # Transform features using the fitted preprocessor
         if preprocessor is not None:
+            if hasattr(preprocessor, "feature_names") and preprocessor.feature_names:
+                for col in preprocessor.feature_names:
+                    if col not in feature_df.columns:
+                        feature_df[col] = np.nan
+                feature_df = feature_df[preprocessor.feature_names]
             X = preprocessor.transform(feature_df)
         else:
-            X = feature_df.values
+            X = feature_df.copy()
+
+        if hasattr(model, "feature_names_in_") and hasattr(X, "columns"):
+            X = X[model.feature_names_in_]
 
         # predict_proba returns [[prob_legit, prob_fraud]] — take fraud column
         proba = model.predict_proba(X)[0][1]
