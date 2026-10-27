@@ -31,6 +31,8 @@
         <module>transaction-service</module>
         <module>notification-service</module>
         <module>audit-service</module>
+        <module>support-service</module>
+        <module>admin-service</module>
     </modules>
 
     <dependencyManagement>

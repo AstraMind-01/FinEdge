@@ -10,6 +10,12 @@ public record NotificationResponse(
         NotificationType type,
         String transactionRef,
         LocalDateTime createdAt,
-        boolean read
+        boolean read,
+        String title,
+        String category,
+        String priority,
+        String actionLink,
+        String actionLabel,
+        String sourceEvent
 ) {
 }

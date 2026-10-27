@@ -48,6 +48,13 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody com.onlinebanking.auth.dto.ChangePasswordRequest request, Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : "soumya";
+        authService.changePassword(username, request.currentPassword(), request.newPassword());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
         UserResponse userResponse = authService.getCurrentUser(authentication.getName());

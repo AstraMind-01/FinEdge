@@ -372,6 +372,18 @@ public class TransactionService {
                 .toList();
     }
 
+    public List<TransactionResponse> getAccountTransactionHistory(String accountNumber, String username) {
+        // Validate ownership: the account must belong to the authenticated user
+        InternalAccountResponse account = fetchInternalAccount(accountNumber);
+        validateOwnership(account, username);
+
+        return transactionRepository
+                .findByFromAccountNumberOrToAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     private void evaluateFraudRisk(Transaction transaction, String bearerToken) {
         TransactionFraudHelper.evaluateFraudRisk(
                 transaction,

@@ -129,11 +129,6 @@ export default function Sidebar() {
             <BarChart3 className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Reports &amp; Analytics</span>
           </Link>
-
-          <Link aria-current={pathname === "/monthly-finance" ? "page" : undefined} className={getLinkClasses(pathname === "/monthly-finance")} href="/monthly-finance">
-            <CalendarClock className="mr-3 shrink-0" size={18} />
-            <span className="text-[13px] truncate">Monthly Finance</span>
-          </Link>
         </nav>
 
         <div className="p-6 mt-auto border-t border-white/5">

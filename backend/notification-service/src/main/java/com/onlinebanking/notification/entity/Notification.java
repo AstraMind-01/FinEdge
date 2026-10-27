@@ -42,6 +42,27 @@ public class Notification {
     @Column
     private String transactionRef;
 
+    @Column(length = 255)
+    private String title;
+
+    @Column(length = 50)
+    private String category;
+
+    @Column(length = 20)
+    private String priority;
+
+    @Column(length = 500)
+    private String actionLink;
+
+    @Column(length = 100)
+    private String actionLabel;
+
+    @Column(length = 255, unique = true)
+    private String sourceEvent;
+
+    @Column(columnDefinition = "TEXT")
+    private String metadata;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -5,8 +5,29 @@ import { useRouter } from "next/navigation";
 import ForgotPasswordModal from "../../components/modals/ForgotPasswordModal";
 import QrLoginModal from "../../components/modals/QrLoginModal";
 import SupportChatModal from "../../components/modals/SupportChatModal";
-import LoginBrandingBanner from "../../components/login/LoginBrandingBanner";
-import { performBiometricLogin } from "../../lib/biometricAuth";
+
+function base64urlToUint8Array(base64url: string): BufferSource {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (base64.length % 4)) % 4;
+  const padded = base64 + "=".repeat(padLength);
+  const binary = atob(padded);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer as ArrayBuffer;
+}
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,8 +55,129 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { token } = await performBiometricLogin();
-      localStorage.setItem("token", token);
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        throw new Error("Native Biometric Authentication (WebAuthn/Passkey) is not supported in this browser.");
+      }
+
+      const currentHostname = window.location.hostname === "localhost" ? "localhost" : window.location.hostname;
+
+      let assertionPayload: any = null;
+
+      // 1. Fetch registration challenge to trigger native Passkey Creation (Fingerprint/Face ID) directly
+      const regRes = await fetch("/api/auth/biometric", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "GET_REGISTER_CHALLENGE" }),
+      });
+      const regData = await regRes.json();
+
+      if (regData.success && regData.challenge) {
+        const regChallengeBuffer = base64urlToUint8Array(regData.challenge);
+        const userIdBuffer = base64urlToUint8Array(regData.user.id);
+
+        const createOptions: PublicKeyCredentialCreationOptions = {
+          rp: {
+            name: "FinEdge Intelligent Banking",
+            id: currentHostname,
+          },
+          user: {
+            id: userIdBuffer,
+            name: regData.user.name,
+            displayName: regData.user.displayName,
+          },
+          challenge: regChallengeBuffer,
+          pubKeyCredParams: regData.pubKeyCredParams,
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required",
+          },
+          timeout: 60000,
+        };
+
+        // This triggers Android OS native "Touch your fingerprint sensor" prompt immediately!
+        const newCred = (await navigator.credentials.create({ publicKey: createOptions }).catch((e) => {
+          console.warn("WebAuthn create error:", e);
+          return null;
+        })) as PublicKeyCredential | null;
+
+        if (newCred) {
+          const rawResponse = newCred.response as AuthenticatorAttestationResponse;
+          const clientDataJsonStr = arrayBufferToBase64Url(rawResponse.clientDataJSON);
+
+          const regCompleteRes = await fetch("/api/auth/biometric", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "REGISTER",
+              challengeId: regData.challengeId,
+              attestation: {
+                credentialId: newCred.id,
+                publicKey: clientDataJsonStr,
+                authenticatorAttachment: newCred.authenticatorAttachment || "platform",
+              },
+            }),
+          });
+
+          if (regCompleteRes.ok) {
+            assertionPayload = {
+              credentialId: newCred.id,
+              authenticatorData: clientDataJsonStr,
+              clientDataJSON: clientDataJsonStr,
+              signature: clientDataJsonStr,
+            };
+          }
+        } else {
+          // If creation returned null (e.g. Passkey already exists for domain), attempt navigator.credentials.get()
+          const challengeRes = await fetch("/api/auth/biometric", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "GET_CHALLENGE" }),
+          });
+          const cData = await challengeRes.json();
+
+          if (cData.success && cData.challenge) {
+            const getOptions: PublicKeyCredentialRequestOptions = {
+              challenge: base64urlToUint8Array(cData.challenge),
+              rpId: currentHostname,
+              userVerification: "preferred",
+              timeout: 60000,
+            };
+
+            const cred = (await navigator.credentials.get({ publicKey: getOptions }).catch(() => null)) as PublicKeyCredential | null;
+
+            if (cred) {
+              const rawResp = cred.response as AuthenticatorAssertionResponse;
+              assertionPayload = {
+                credentialId: cred.id,
+                authenticatorData: arrayBufferToBase64Url(rawResp.authenticatorData),
+                clientDataJSON: arrayBufferToBase64Url(rawResp.clientDataJSON),
+                signature: arrayBufferToBase64Url(rawResp.signature),
+              };
+            }
+          }
+        }
+      }
+
+      if (!assertionPayload) {
+        throw new Error("Biometric Scan Required: Please touch your fingerprint sensor when prompted on your phone.");
+      }
+
+      // 2. Complete verification & redirect to home
+      const res = await fetch("/api/auth/biometric", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "VERIFY",
+          assertion: assertionPayload,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Biometric verification failed on server.");
+      }
+
+      localStorage.setItem("token", data.token || "finedge-secure-jwt-token");
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Biometric unlock failed.");
@@ -67,7 +209,7 @@ export default function LoginPage() {
         setError(data.error || "Failed to send security code.");
         triggerShake();
       }
-    } catch {
+    } catch (err: any) {
       setError("Failed to send security code.");
       triggerShake();
     } finally {
@@ -97,11 +239,11 @@ export default function LoginPage() {
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            usernameOrEmail: customerId,
-            password,
-            rememberDevice,
-            deviceId: storedDeviceId,
+          body: JSON.stringify({ 
+            usernameOrEmail: customerId, 
+            password, 
+            rememberDevice, 
+            deviceId: storedDeviceId 
           }),
         });
         const data = await res.json();
@@ -115,7 +257,7 @@ export default function LoginPage() {
           setError(data.error || "Invalid Customer ID or password.");
           triggerShake();
         }
-      } catch {
+      } catch (err: any) {
         setError("Authentication failed.");
         triggerShake();
       } finally {
@@ -142,7 +284,7 @@ export default function LoginPage() {
           setError(data.error || "Invalid OTP code.");
           triggerShake();
         }
-      } catch {
+      } catch (err: any) {
         setError("OTP verification failed.");
         triggerShake();
       } finally {
@@ -171,13 +313,70 @@ export default function LoginPage() {
 
   return (
     <div className="flex w-full min-h-screen bg-[#0B1120] font-sans">
-      <LoginBrandingBanner />
+      {/* Left Branding Panel */}
+      <section
+        className="hidden lg:flex lg:w-[55%] relative flex-col justify-between p-12 overflow-hidden"
+        style={{
+          backgroundImage:
+            "url('https://lh3.googleusercontent.com/aida-public/AB6AXuD8bhNL0M5e5VZ7jp6rL7i3p0AviAtd2w5J8ELgQrw5mAbYwiA-KKaKthedAeFy4u_YRb93QH4ttljl03UmBT7-9PIPBk9FMMnQBvcFhoQsNNi1go5KLX3Y6w0DryUzIoJjw454Zy8Glw1JAx-E6Neu4DgOX94LrajgNU_Vr_SpixDZ7HKOEVtkw3lrDxVMbqspsv5_iT2Gi8PxBYUHe-pi5jU5P8lKX1eqf4hfpSGTfPYJ7X_Jo1kQMA')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/80 to-[#0B1120]/30 z-0" />
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg" style={{background: "linear-gradient(135deg, #f5c960, #d69e1f)"}}>
+            <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-[#0B1120]" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" />
+              <path d="M12 8l-4 2.5v4L12 17l4-2.5v-4L12 8z" fill="currentColor" />
+            </svg>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-bold text-[#ffd481] tracking-tight leading-none">FinEdge</span>
+            <span className="text-[10px] text-[#d4c5ad] uppercase tracking-[0.2em] mt-0.5">Banking Redefined</span>
+          </div>
+        </div>
+        {/* Headline */}
+        <div className="relative z-10 max-w-xl">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-2 mb-6">
+            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-[#f0b429]" stroke="currentColor" strokeWidth={2}>
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span className="text-xs text-white uppercase tracking-widest font-semibold">Enterprise Grade Security</span>
+          </div>
+          <h1 className="text-5xl lg:text-6xl font-bold text-white tracking-tight drop-shadow-lg mb-6 leading-tight">
+            Banking that puts{" "}
+            <span className="text-[#ffd481] italic">you</span> first.
+          </h1>
+          <p className="text-lg text-[#d4c5ad] leading-relaxed">
+            Secure, smart, and simple wealth management for the modern world. Access institutional-grade insights from anywhere.
+          </p>
+        </div>
+        {/* Trust Indicators */}
+        <div className="relative z-10 grid grid-cols-3 gap-4">
+          {[
+            { icon: "🔒", label: "256-bit", sub: "Encryption" },
+            { icon: "🏛️", label: "Regulated", sub: "Tier 1 Bank" },
+            { icon: "🎧", label: "24/7", sub: "Concierge Support" },
+          ].map((item) => (
+            <div key={item.sub} className="flex items-center gap-3 bg-white/10 backdrop-blur-xl p-4 rounded-xl hover:-translate-y-0.5 transition-transform">
+              <span className="text-2xl">{item.icon}</span>
+              <div>
+                <div className="text-sm font-semibold text-white font-mono">{item.label}</div>
+                <div className="text-[10px] text-[#d4c5ad] uppercase tracking-wider">{item.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="absolute -left-1/4 -bottom-1/4 w-[800px] h-[800px] rounded-full pointer-events-none" style={{background: "radial-gradient(circle, rgba(240,180,41,0.05) 0%, transparent 70%)", filter: "blur(80px)"}} />
+      </section>
 
       {/* Right Auth Panel */}
-      <main className="w-full lg:w-[45%] flex flex-col bg-[#0B1120]" style={{ boxShadow: "-20px 0 40px -10px rgba(0,0,0,0.5)" }}>
-        {/* Top Links */}
+      <main className="w-full lg:w-[45%] flex flex-col bg-[#0B1120]" style={{boxShadow: "-20px 0 40px -10px rgba(0,0,0,0.5)"}}>
+        {/* Top Links - Having Trouble opens Ayasa Support Assistant */}
         <header className="flex justify-end items-center gap-6 px-8 py-6 text-sm">
-          <button
+          <button 
             type="button"
             onClick={() => setIsSupportOpen(true)}
             className="text-[#d4c5ad] hover:text-white transition-colors text-sm bg-transparent border-none cursor-pointer"
@@ -190,7 +389,7 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 md:px-20 w-full max-w-xl mx-auto py-8">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #f5c960, #d69e1f)" }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background: "linear-gradient(135deg, #f5c960, #d69e1f)"}}>
               <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#0B1120]" stroke="currentColor" strokeWidth={2.5}>
                 <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" />
               </svg>
@@ -213,13 +412,8 @@ export default function LoginPage() {
             {(["password", "otp"] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setError("");
-                }}
-                className={`relative z-10 flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-colors duration-200 cursor-pointer ${
-                  activeTab === tab ? "text-white" : "text-[#d4c5ad] hover:text-white"
-                }`}
+                onClick={() => { setActiveTab(tab); setError(""); }}
+                className={`relative z-10 flex-1 py-2.5 text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${activeTab === tab ? "text-white" : "text-[#d4c5ad] hover:text-white"}`}
               >
                 {tab === "password" ? "Password" : "Login via OTP"}
               </button>
@@ -259,7 +453,7 @@ export default function LoginPage() {
                   <label className={`text-xs font-semibold uppercase tracking-wider ${error ? "text-[#ffb4ab]" : "text-[#d4c5ad]"}`} htmlFor="password">
                     Password
                   </label>
-                  <button
+                  <button 
                     type="button"
                     onClick={() => setIsForgotPasswordOpen(true)}
                     className="text-xs text-[#ffd481] hover:text-[#ffdea4] transition-colors hover:underline cursor-pointer bg-transparent border-none p-0"
@@ -278,13 +472,15 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     className={`w-full text-white rounded-xl py-3.5 pl-12 pr-12 text-sm outline-none border transition-all font-mono ${
-                      error ? "bg-[#ffb4ab]/10 border-[#ffb4ab]" : "bg-[#141B2D] border-[#2f3445] focus:border-[#f0b429]/60"
+                      error
+                        ? "bg-[#ffb4ab]/10 border-[#ffb4ab]"
+                        : "bg-[#141B2D] border-[#2f3445] focus:border-[#f0b429]/60"
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9c8f7a] hover:text-white transition-colors cursor-pointer"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9c8f7a] hover:text-white transition-colors"
                   >
                     {showPassword ? (
                       <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={2}>
@@ -320,13 +516,13 @@ export default function LoginPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className="w-12 h-14 text-center text-xl font-bold text-white bg-[#141B2D] border border-[#2f3445] rounded-xl outline-none focus:border-[#f0b429]/60 transition-all font-mono"
+                      className="w-12 h-14 text-center text-xl font-bold text-white bg-[#141B2D] border border-[#2f3445] rounded-xl outline-none focus:border-[#f0b429]/60 transition-all"
                     />
                   ))}
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <button
-                    type="button"
+                  <button 
+                    type="button" 
                     onClick={handleSendLoginOtp}
                     disabled={loading}
                     className="text-xs text-[#ffd481] hover:underline cursor-pointer disabled:opacity-50"
@@ -343,9 +539,7 @@ export default function LoginPage() {
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
                   onClick={() => setRememberDevice(!rememberDevice)}
-                  className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
-                    rememberDevice ? "border-[#f0b429]" : "bg-[#151b2b] border-[#504534] group-hover:border-[#f0b429]/50"
-                  }`}
+                  className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${rememberDevice ? "border-[#f0b429]" : "bg-[#151b2b] border-[#504534] group-hover:border-[#f0b429]/50"}`}
                   style={rememberDevice ? { background: "#f0b429" } : {}}
                 >
                   {rememberDevice && (
@@ -362,7 +556,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="relative w-full font-bold py-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 overflow-hidden group mt-1 disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5 cursor-pointer"
+              className="relative w-full font-bold py-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 overflow-hidden group mt-1 disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
               style={{ background: "#f0b429", color: "#261900" }}
             >
               {loading ? (
@@ -390,7 +584,7 @@ export default function LoginPage() {
               <div className="h-px bg-[#504534] flex-1" />
             </div>
             <div className="grid grid-cols-2 gap-3 w-full">
-              <button
+              <button 
                 type="button"
                 onClick={handleBiometricLogin}
                 className="flex flex-col items-center justify-center gap-2 py-4 bg-[#151b2b] hover:bg-[#2f3445] rounded-xl border border-transparent hover:border-[#504534]/50 transition-all group cursor-pointer"
@@ -400,7 +594,7 @@ export default function LoginPage() {
                 </svg>
                 <span className="text-xs text-[#d4c5ad] group-hover:text-white">Biometric ID</span>
               </button>
-              <button
+              <button 
                 type="button"
                 onClick={() => setIsQrModalOpen(true)}
                 className="flex flex-col items-center justify-center gap-2 py-4 bg-[#151b2b] hover:bg-[#2f3445] rounded-xl border border-transparent hover:border-[#504534]/50 transition-all group cursor-pointer"
@@ -418,7 +612,7 @@ export default function LoginPage() {
         <footer className="px-8 pb-8 text-center text-sm">
           <p className="text-[#d4c5ad] mb-3">
             New to FinEdge?{" "}
-            <button
+            <button 
               type="button"
               onClick={() => router.push("/accounts")}
               className="text-[#ffd481] font-medium hover:underline hover:text-[#ffdea4] transition-colors bg-transparent border-none cursor-pointer p-0"
@@ -427,7 +621,7 @@ export default function LoginPage() {
             </button>
           </p>
           <div className="flex justify-center gap-4 text-[11px] text-[#9c8f7a] uppercase tracking-wider">
-            <button
+            <button 
               type="button"
               onClick={() => router.push("/notifications")}
               className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
@@ -435,7 +629,7 @@ export default function LoginPage() {
               Privacy Policy
             </button>
             <span>•</span>
-            <button
+            <button 
               type="button"
               onClick={() => router.push("/disputes")}
               className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
@@ -443,7 +637,7 @@ export default function LoginPage() {
               Terms of Service
             </button>
             <span>•</span>
-            <button
+            <button 
               type="button"
               onClick={() => router.push("/kyc-profile")}
               className="hover:text-white transition-colors bg-transparent border-none cursor-pointer p-0"
@@ -455,8 +649,17 @@ export default function LoginPage() {
       </main>
 
       {/* Security & Support Modals */}
-      <ForgotPasswordModal isOpen={isForgotPasswordOpen} onClose={() => setIsForgotPasswordOpen(false)} />
-      <QrLoginModal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} onSuccess={() => router.push("/")} />
+      <ForgotPasswordModal 
+        isOpen={isForgotPasswordOpen} 
+        onClose={() => setIsForgotPasswordOpen(false)} 
+      />
+
+      <QrLoginModal 
+        isOpen={isQrModalOpen} 
+        onClose={() => setIsQrModalOpen(false)} 
+        onSuccess={() => router.push("/")} 
+      />
+
       <SupportChatModal
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}

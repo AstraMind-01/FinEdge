@@ -40,12 +40,8 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> getUserNotifications(String username) {
-        List<Notification> userNotifs = notificationRepository.findByRecipientUsernameOrderByCreatedAtDesc(username);
-        if (userNotifs.isEmpty()) {
-            seedInitialNotifications(username);
-            userNotifs = notificationRepository.findByRecipientUsernameOrderByCreatedAtDesc(username);
-        }
-        return userNotifs.stream()
+        return notificationRepository.findByRecipientUsernameOrderByCreatedAtDesc(username)
+                .stream()
                 .map(n -> new NotificationResponse(
                         n.getId(),
                         n.getRecipientUsername(),
@@ -53,45 +49,72 @@ public class NotificationService {
                         n.getType(),
                         n.getTransactionRef(),
                         n.getCreatedAt(),
-                        n.isRead()
+                        n.isRead(),
+                        n.getTitle(),
+                        n.getCategory(),
+                        n.getPriority(),
+                        n.getActionLink(),
+                        n.getActionLabel(),
+                        n.getSourceEvent()
                 ))
                 .toList();
     }
 
-    private void seedInitialNotifications(String username) {
-        Notification n1 = Notification.builder()
-                .recipientUsername(username)
-                .message("Welcome to FinEdge Enterprise Banking! Your account profile is verified and active.")
-                .type(NotificationType.TRANSACTION_SUCCESS)
-                .transactionRef("ALERT-WELCOME-01")
+    @org.springframework.transaction.annotation.Transactional
+    public void markAsRead(Long id) {
+        notificationRepository.findById(id).ifPresent(n -> {
+            n.setRead(true);
+            notificationRepository.save(n);
+        });
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void markAllAsRead(String username) {
+        notificationRepository.markAllAsReadByUsername(username);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteNotification(Long id) {
+        notificationRepository.deleteById(id);
+    }
+
+    public long getUnreadCount(String username) {
+        return notificationRepository.countByRecipientUsernameAndReadFalse(username);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public NotificationResponse createNotification(com.onlinebanking.notification.dto.NotificationRequest request) {
+        Notification notification = Notification.builder()
+                .recipientUsername(request.recipientUsername())
+                .message(request.message())
+                .type(request.type())
+                .transactionRef(request.transactionRef())
+                .title(request.title())
+                .category(request.category())
+                .priority(request.priority())
+                .actionLink(request.actionLink())
+                .actionLabel(request.actionLabel())
+                .sourceEvent(request.sourceEvent())
+                .metadata(request.metadata())
                 .read(false)
                 .build();
-
-        Notification n2 = Notification.builder()
-                .recipientUsername(username)
-                .message("KYC Identity Verification passed successfully. Verified status applied to JWT token claims.")
-                .type(NotificationType.TRANSACTION_SUCCESS)
-                .transactionRef("KYC-SYS-001")
-                .read(false)
-                .build();
-
-        Notification n3 = Notification.builder()
-                .recipientUsername(username)
-                .message("Opening deposit of $10,000.00 to Savings Account was processed successfully.")
-                .type(NotificationType.TRANSACTION_SUCCESS)
-                .transactionRef("TXN-DEP-001")
-                .read(false)
-                .build();
-
-        Notification n4 = Notification.builder()
-                .recipientUsername(username)
-                .message("Security Shield Active: XGBoost ML Engine evaluated transaction risk 0.12 (LOW_RISK).")
-                .type(NotificationType.TRANSACTION_SUCCESS)
-                .transactionRef("SEC-ML-002")
-                .read(false)
-                .build();
-
-        notificationRepository.saveAll(List.of(n1, n2, n3, n4));
+        
+        Notification saved = notificationRepository.save(notification);
+        return new NotificationResponse(
+                saved.getId(),
+                saved.getRecipientUsername(),
+                saved.getMessage(),
+                saved.getType(),
+                saved.getTransactionRef(),
+                saved.getCreatedAt(),
+                saved.isRead(),
+                saved.getTitle(),
+                saved.getCategory(),
+                saved.getPriority(),
+                saved.getActionLink(),
+                saved.getActionLabel(),
+                saved.getSourceEvent()
+        );
     }
 
     private String buildNotificationMessage(TransactionEvent event) {

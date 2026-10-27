@@ -62,9 +62,13 @@ Thumbs.db
 
 # Environment variables & secrets
 .env
+.env.*
+!.env.example
 *.env
 *.pem
 *.key
+*.p12
+*.pfx
 secrets/
 
 # ML Datasets & Trained Artifacts
