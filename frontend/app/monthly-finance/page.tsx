@@ -16,8 +16,8 @@ import { generateAndDownloadCentralPDF } from '../../lib/pdfService';
 import { exportReportToCSV } from '../../lib/reportExporter';
 
 export default function MonthlyFinancePage() {
-  const { transactions } = useAccounts();
-  const [selectedMonth, setSelectedMonth] = useState('2026-10');
+  const { transactions, accounts } = useAccounts();
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const monthlyData = getMonthlyFinanceData(selectedMonth, transactions);
 
@@ -25,7 +25,11 @@ export default function MonthlyFinancePage() {
     generateAndDownloadCentralPDF({
       documentType: 'MONTHLY_SUMMARY',
       period: monthlyData.monthLabel,
-      transactions: transactions,
+      account: accounts[0],
+      transactions: transactions.filter(transaction => {
+        const parsed = new Date(transaction.timestamp || transaction.date || '');
+        return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 7) === selectedMonth;
+      }),
     });
   };
 
@@ -36,7 +40,7 @@ export default function MonthlyFinancePage() {
       totalExpenses: monthlyData.totalSpending,
       netSavings: monthlyData.netSavings,
       investments: monthlyData.totalInvestments,
-      creditScore: 785,
+      creditScore: 0,
       categoryBreakdown: monthlyData.categories.map(c => ({
         name: c.name,
         amount: c.amount,

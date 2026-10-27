@@ -5,6 +5,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell
 } from 'recharts';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const DATA_BY_RANGE: Record<string, { name: string; income: number; expense: number }[]> = {
   Weekly: [
@@ -65,10 +66,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function IncomeExpenseChart() {
+export default function IncomeExpenseChart({ analytics }: { analytics: ReportAnalytics }) {
   const [range, setRange] = useState<keyof typeof DATA_BY_RANGE>('Monthly');
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const data = DATA_BY_RANGE[range];
+  const data = analytics.monthly.length ? analytics.monthly : DATA_BY_RANGE[range];
 
   return (
     <div className="bg-surface-container-low border border-white/5 rounded-xl p-6 shadow-sm">

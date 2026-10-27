@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 interface MetricCardProps {
   label: string;
@@ -16,11 +17,12 @@ interface MetricCardProps {
 }
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const values = data.length > 1 ? data : [data[0] || 0, data[0] || 0];
   const [progress, setProgress] = useState(0);
   const w = 100, h = 32;
-  const min = Math.min(...data), max = Math.max(...data);
+  const min = Math.min(...values), max = Math.max(...values);
   const norm = (v: number) => ((v - min) / (max - min || 1)) * (h - 6) + 3;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - norm(v)}`).join(' ');
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - norm(v)}`).join(' ');
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -61,12 +63,10 @@ function CountUp({ target, prefix = '', suffix = '', duration = 1200, delay = 0 
   target: number; prefix?: string; suffix?: string; duration?: number; delay?: number;
 }) {
   const [display, setDisplay] = useState(0);
-  const started = useRef(false);
 
   useEffect(() => {
+    setDisplay(0);
     const t = setTimeout(() => {
-      if (started.current) return;
-      started.current = true;
       let start: number | null = null;
       const step = (ts: number) => {
         if (!start) start = ts;
@@ -87,13 +87,13 @@ function CountUp({ target, prefix = '', suffix = '', duration = 1200, delay = 0 
   );
 }
 
-export default function MetricsStrip() {
+export default function MetricsStrip({ analytics }: { analytics: ReportAnalytics }) {
   const metrics: MetricCardProps[] = [
-    { label: 'Total Income', value: 86500, prefix: '₹', trend: 'up', trendPct: 12.4, sparkData: [55, 60, 58, 72, 68, 80, 86.5], color: '#57f1db', delay: 0 },
-    { label: 'Total Expenses', value: 48650, prefix: '₹', trend: 'down', trendPct: 3.2, sparkData: [42, 45, 51, 47, 50, 48, 48.65], color: '#ffb4ab', delay: 150 },
-    { label: 'Net Savings', value: 37850, prefix: '₹', trend: 'up', trendPct: 8.7, sparkData: [18, 22, 15, 28, 24, 35, 37.85], color: '#ffd481', delay: 300 },
-    { label: 'Investments', value: 124000, prefix: '₹', trend: 'up', trendPct: 5.1, sparkData: [95, 98, 103, 108, 115, 119, 124], color: '#c6bfff', delay: 450 },
-    { label: 'Credit Score', value: 782, prefix: '', trend: 'up', trendPct: 2.3, sparkData: [745, 751, 758, 762, 770, 777, 782], color: '#ffd481', delay: 600 },
+    { label: 'Total Income', value: analytics.totalIncome, prefix: '₹', trend: 'neutral', trendPct: 0, sparkData: analytics.monthly.map(m => m.income), color: '#57f1db', delay: 0 },
+    { label: 'Total Expenses', value: analytics.totalExpenses, prefix: '₹', trend: 'neutral', trendPct: 0, sparkData: analytics.monthly.map(m => m.expense), color: '#ffb4ab', delay: 150 },
+    { label: 'Net Savings', value: analytics.netSavings, prefix: '₹', trend: analytics.netSavings >= 0 ? 'up' : 'down', trendPct: 0, sparkData: analytics.monthly.map(m => m.income - m.expense), color: '#ffd481', delay: 300 },
+    { label: 'Investment Activity', value: analytics.investmentActivity, prefix: '₹', trend: 'neutral', trendPct: 0, sparkData: analytics.monthly.map(() => analytics.investmentActivity), color: '#c6bfff', delay: 450 },
+    { label: 'Transactions', value: analytics.transactions.length, prefix: '', trend: 'neutral', trendPct: 0, sparkData: analytics.monthly.map((m) => m.income + m.expense), color: '#ffd481', delay: 600 },
   ];
 
   return (

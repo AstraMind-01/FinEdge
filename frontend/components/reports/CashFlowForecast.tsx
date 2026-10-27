@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const SCENARIOS = {
   Optimistic: {
@@ -62,9 +63,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function CashFlowForecast() {
+export default function CashFlowForecast({ analytics }: { analytics: ReportAnalytics }) {
   const [scenario, setScenario] = useState<ScenarioKey>('Expected');
-  const { color, data } = SCENARIOS[scenario];
+  const { color } = SCENARIOS[scenario];
+  const baseSavings = analytics.netSavings;
+  const multiplier = scenario === 'Optimistic' ? 1.08 : scenario === 'Conservative' ? 0.92 : 1;
+  const data = analytics.monthly.length
+    ? [...analytics.monthly.map(row => ({ month: row.name, actual: row.income - row.expense })), ...[1,2,3].map(offset => ({ month: `+${offset}m`, forecast: Math.round(baseSavings * multiplier), low: Math.round(baseSavings * multiplier * .9), high: Math.round(baseSavings * multiplier * 1.1) }))]
+    : SCENARIOS[scenario].data;
 
   return (
     <div className="bg-surface-container-low border border-white/5 rounded-xl p-6 shadow-sm">

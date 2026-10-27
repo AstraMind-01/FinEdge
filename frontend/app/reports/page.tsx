@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import MetricsStrip from '../../components/reports/MetricsStrip';
@@ -18,17 +18,19 @@ import { FileDown, FileSpreadsheet, Sparkles, ChevronDown, CalendarDays } from '
 import { exportReportToCSV } from '../../lib/reportExporter';
 import { generateAndDownloadCentralPDF } from '../../lib/pdfService';
 import { useAccounts } from '../../context/AccountContext';
+import { buildReportAnalytics } from '../../lib/reportAnalytics';
 
 const DATE_RANGES = ['This Month', 'Last Month', 'Last 3 Months', 'Last 6 Months', 'This Year', 'Custom Range'];
 
 export default function ReportsPage() {
-  const { transactions } = useAccounts();
+  const { transactions, accounts } = useAccounts();
   const [dateRange, setDateRange] = useState('This Month');
   const [dateOpen, setDateOpen] = useState(false);
   const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const analytics = useMemo(() => buildReportAnalytics(transactions, dateRange), [transactions, dateRange]);
 
   const getReportExportData = () => {
-    const sampleTransactions = transactions.map(t => ({
+    const sampleTransactions = analytics.transactions.map(t => ({
       date: t.date || "Today",
       description: t.merchantName || t.category || "Transaction",
       category: t.category || "General",
@@ -38,25 +40,13 @@ export default function ReportsPage() {
 
     return {
       timeframe: dateRange,
-      totalIncome: 86500,
-      totalExpenses: 48650,
-      netSavings: 37850,
-      investments: 124000,
-      creditScore: 782,
-      categoryBreakdown: [
-        { name: "Shopping", amount: 15552, percentage: 32 },
-        { name: "Food & Dining", amount: 11676, percentage: 24 },
-        { name: "Bills & Utilities", amount: 9243, percentage: 19 },
-        { name: "Travel", amount: 6811, percentage: 14 },
-        { name: "Health", amount: 3405, percentage: 7 },
-        { name: "Others", amount: 1946, percentage: 4 },
-      ],
-      transactions: sampleTransactions.length > 0 ? sampleTransactions : [
-        { date: "10 Aug 2026", description: "Amazon.in", category: "Shopping", amount: 2499, type: "DEBIT" as const },
-        { date: "09 Aug 2026", description: "TechCorp Salary", category: "Salary", amount: 86500, type: "CREDIT" as const },
-        { date: "08 Aug 2026", description: "Starbucks Coffee", category: "Food & Dining", amount: 450, type: "DEBIT" as const },
-        { date: "07 Aug 2026", description: "Airtel Broadband", category: "Bills & Utilities", amount: 1179, type: "DEBIT" as const },
-      ],
+      totalIncome: analytics.totalIncome,
+      totalExpenses: analytics.totalExpenses,
+      netSavings: analytics.netSavings,
+      investments: analytics.investmentActivity,
+      creditScore: 0,
+      categoryBreakdown: analytics.categories,
+      transactions: sampleTransactions,
     };
   };
 
@@ -64,7 +54,8 @@ export default function ReportsPage() {
     generateAndDownloadCentralPDF({
       documentType: 'MONTHLY_SUMMARY',
       period: dateRange,
-      transactions: transactions,
+      account: accounts[0],
+      transactions: analytics.transactions,
     });
   };
 
@@ -148,24 +139,24 @@ export default function ReportsPage() {
           </div>
 
           {/* Animated Metrics Strip */}
-          <MetricsStrip />
+          <MetricsStrip analytics={analytics} />
 
           {/* Two-Column Main Layout */}
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
 
             {/* Left Column */}
             <div className="flex flex-col gap-6">
-              <IncomeExpenseChart />
-              <SpendingBreakdown />
-              <CashFlowForecast />
+              <IncomeExpenseChart analytics={analytics} />
+              <SpendingBreakdown analytics={analytics} />
+              <CashFlowForecast analytics={analytics} />
               <GoalProgressTracker />
             </div>
 
             {/* Right Column */}
             <div className="flex flex-col gap-6">
-              <AIInsights />
-              <ReportTemplates />
-              <ComparisonSnapshot />
+              <AIInsights analytics={analytics} />
+              <ReportTemplates analytics={analytics} />
+              <ComparisonSnapshot analytics={analytics} />
               <ScheduledReports />
             </div>
           </div>

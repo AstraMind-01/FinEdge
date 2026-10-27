@@ -15,7 +15,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
   const cards = [
     {
       title: "Total Monthly Income",
-      amount: `$${data.totalIncome.toLocaleString()}`,
+      amount: `₹${data.totalIncome.toLocaleString('en-IN')}`,
       subtext: "+10.6% vs previous month",
       icon: Wallet,
       iconColor: "text-emerald-400",
@@ -25,7 +25,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
     },
     {
       title: "Total Living Spending",
-      amount: `$${data.totalSpending.toLocaleString()}`,
+      amount: `₹${data.totalSpending.toLocaleString('en-IN')}`,
       subtext: "42.2% of monthly earnings",
       icon: ArrowDownRight,
       iconColor: "text-rose-400",
@@ -35,7 +35,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
     },
     {
       title: "Net Retained Savings",
-      amount: `$${data.netSavings.toLocaleString()}`,
+      amount: `₹${data.netSavings.toLocaleString('en-IN')}`,
       subtext: `${data.savingsRate}% total retention rate`,
       icon: PiggyBank,
       iconColor: "text-primary",
@@ -45,7 +45,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
     },
     {
       title: "Wealth Investments",
-      amount: `$${data.totalInvestments.toLocaleString()}`,
+      amount: `₹${data.totalInvestments.toLocaleString('en-IN')}`,
       subtext: "5 SIPs & asset allocations",
       icon: TrendingUp,
       iconColor: "text-sky-400",
@@ -55,7 +55,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
     },
     {
       title: "Active Loans / EMIs",
-      amount: `$${data.totalLoansEmi.toLocaleString()}`,
+      amount: `₹${data.totalLoansEmi.toLocaleString('en-IN')}`,
       subtext: "2 active accounts (Auto-debited)",
       icon: Landmark,
       iconColor: "text-amber-400",
@@ -65,7 +65,7 @@ export default function MonthlySummaryCards({ data }: MonthlySummaryCardsProps) 
     },
     {
       title: "Insurance & Subscriptions",
-      amount: `$${(data.totalInsurance + data.totalSubscriptions).toLocaleString()}`,
+      amount: `₹${(data.totalInsurance + data.totalSubscriptions).toLocaleString('en-IN')}`,
       subtext: "Protection + 5 recurring bills",
       icon: ShieldCheck,
       iconColor: "text-indigo-400",

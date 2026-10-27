@@ -23,16 +23,16 @@ export default function MonthlyCashFlowChart({ cashFlow, monthLabel }: MonthlyCa
           <p className="font-semibold text-on-surface">{label}</p>
           <div className="flex items-center justify-between gap-4 text-emerald-400">
             <span>Income:</span>
-            <span className="font-medium">${payload[0]?.value?.toLocaleString()}</span>
+            <span className="font-medium">₹{payload[0]?.value?.toLocaleString('en-IN')}</span>
           </div>
           <div className="flex items-center justify-between gap-4 text-rose-400">
             <span>Spending:</span>
-            <span className="font-medium">${payload[1]?.value?.toLocaleString()}</span>
+            <span className="font-medium">₹{payload[1]?.value?.toLocaleString('en-IN')}</span>
           </div>
           {payload[2] && (
             <div className="flex items-center justify-between gap-4 text-primary border-t border-white/5 pt-1 mt-1">
               <span>Savings:</span>
-              <span className="font-medium">${payload[2]?.value?.toLocaleString()}</span>
+              <span className="font-medium">₹{payload[2]?.value?.toLocaleString('en-IN')}</span>
             </div>
           )}
         </div>
@@ -88,7 +88,7 @@ export default function MonthlyCashFlowChart({ cashFlow, monthLabel }: MonthlyCa
             <BarChart data={cashFlow} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a334a" vertical={false} opacity={0.4} />
               <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}K`} />
               <Tooltip content={<CustomTooltip />} />
               <Legend 
                 verticalAlign="top" 
@@ -113,7 +113,7 @@ export default function MonthlyCashFlowChart({ cashFlow, monthLabel }: MonthlyCa
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a334a" vertical={false} opacity={0.4} />
               <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}K`} />
               <Tooltip content={<CustomTooltip />} />
               <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: 10, fontSize: 11 }} />
               <Area type="monotone" dataKey="income" name="Income" stroke="#10b981" fillOpacity={1} fill="url(#incomeGradient)" strokeWidth={2} />

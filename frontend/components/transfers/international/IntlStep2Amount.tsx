@@ -40,7 +40,7 @@ export default function IntlStep2Amount({
     return String.fromCodePoint(...codePoints);
   };
 
-  const currentRate = exchangeRates.find(r => r.currency === targetCurrency)?.rate || 83.42;
+  const currentRate = exchangeRates.find(r => r.currency === targetCurrency)?.rate || 1;
   
   const inrValue = parseFloat(amountInr) || 0;
   const foreignValue = inrValue > 0 ? (inrValue / currentRate).toFixed(2) : "0.00";

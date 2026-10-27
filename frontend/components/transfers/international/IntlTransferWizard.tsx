@@ -32,7 +32,7 @@ export default function IntlTransferWizard() {
   // Transfer State
   const [selectedRecipient, setSelectedRecipient] = useState<IntlBeneficiary | null>(null);
   const [amountInr, setAmountInr] = useState<string>("");
-  const [targetCurrency, setTargetCurrency] = useState("USD");
+  const [targetCurrency, setTargetCurrency] = useState("INR");
   const [purpose, setPurpose] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -64,7 +64,7 @@ export default function IntlTransferWizard() {
     setCurrentStep(1);
     setSelectedRecipient(null);
     setAmountInr("");
-    setTargetCurrency("USD");
+    setTargetCurrency("INR");
     setPurpose("");
     setIsSuccess(false);
   };
@@ -84,7 +84,7 @@ export default function IntlTransferWizard() {
   if (isSuccess) {
     const transactionId = `INTL-${Math.floor(Math.random() * 900000) + 100000}`;
     const timestamp = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-    const currentRate = exchangeRates.find(r => r.currency === targetCurrency)?.rate || 83.42;
+    const currentRate = exchangeRates.find(r => r.currency === targetCurrency)?.rate || 1;
     const foreignValue = (parseFloat(amountInr) / currentRate).toFixed(2);
     const formatCurrency = (val: string | number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(typeof val === 'string' ? parseFloat(val) : val);
 
@@ -112,7 +112,7 @@ export default function IntlTransferWizard() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-on-surface-variant">Amount Received</span>
-                <span className="text-[18px] font-display-sm font-bold text-tertiary">{foreignValue} {targetCurrency}</span>
+                <span className="text-[18px] font-display-sm font-bold text-tertiary">₹{Number(foreignValue).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-on-surface-variant">To</span>

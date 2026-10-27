@@ -105,7 +105,7 @@ export default function MonthlyTransactionTimeline({
 
                 <div className="text-right shrink-0">
                   <div className={`text-[14px] font-bold ${isCredit ? 'text-emerald-400' : 'text-on-surface'}`}>
-                    {isCredit ? '+' : '-'}${item.amount.toLocaleString()}
+                    {isCredit ? '+' : '-'}₹{item.amount.toLocaleString('en-IN')}
                   </div>
                   <div className="flex items-center justify-end gap-1 text-[11px] text-on-surface-variant mt-0.5">
                     <CheckCircle2 size={11} className="text-emerald-400" />

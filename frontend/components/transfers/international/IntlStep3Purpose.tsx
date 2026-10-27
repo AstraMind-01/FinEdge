@@ -18,7 +18,7 @@ export default function IntlStep3Purpose({
   const [fileStatus, setFileStatus] = useState<'idle' | 'uploading' | 'success'>('idle');
 
   const lrsUsed = 1800000;
-  const lrsLimit = 10000000; // Approx $250k equivalent limit typical for LRS
+  const lrsLimit = 10000000;
   const lrsPercentage = (lrsUsed / lrsLimit) * 100;
 
   const formatCurrency = (val: number) => {
@@ -129,7 +129,7 @@ export default function IntlStep3Purpose({
                 className="w-4 h-4 rounded border-outline-variant/30 text-secondary focus:ring-secondary mt-0.5 cursor-pointer" 
               />
               <label htmlFor="lrsCheck" className="text-[12px] text-on-surface cursor-pointer select-none leading-snug">
-                I declare that the total amount of foreign exchange purchased or remitted by me during the current financial year does not exceed the LRS limit of $250,000 equivalent.
+                I declare that the total amount remitted by me during the current financial year does not exceed the displayed LRS limit of ₹1,00,00,000.
               </label>
             </div>
 

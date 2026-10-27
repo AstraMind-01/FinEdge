@@ -31,7 +31,7 @@ export const CARD_CATEGORIES = [
     desc: "Multi-currency pass for international travel",
     icon: ShieldCheck,
     color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
-    variants: ["Global Multi-Currency Pass", "USD World Pass", "EUR EuroTraveler"]
+    variants: ["Global Rupee Pass", "INR World Pass", "Rupee Traveller"]
   }
 ];
 

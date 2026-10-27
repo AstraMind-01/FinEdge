@@ -380,8 +380,15 @@ public class TransactionService {
         return transactionRepository
                 .findByFromAccountNumberOrToAccountNumberOrderByCreatedAtDesc(accountNumber, accountNumber)
                 .stream()
-                .map(this::mapToResponse)
+                .map(TransactionMapper::mapToResponse)
                 .toList();
+    }
+
+    private void validateOwnership(InternalAccountResponse account, String username) {
+        if (account == null || account.ownerUsername() == null
+                || !account.ownerUsername().equalsIgnoreCase(username)) {
+            throw new InvalidTransactionException("Access denied: Account does not belong to authenticated user");
+        }
     }
 
     private void evaluateFraudRisk(Transaction transaction, String bearerToken) {

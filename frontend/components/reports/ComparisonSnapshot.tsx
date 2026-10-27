@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const COMPARISONS = [
   { label: 'Income', thisMonth: 86500, lastMonth: 76800, isPositiveGood: true },
@@ -9,9 +10,14 @@ const COMPARISONS = [
   { label: 'Savings', thisMonth: 37850, lastMonth: 26600, isPositiveGood: true },
 ];
 
-export default function ComparisonSnapshot() {
+export default function ComparisonSnapshot({ analytics }: { analytics: ReportAnalytics }) {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const comparisons = [
+    { label: 'Income', thisMonth: analytics.totalIncome, lastMonth: analytics.previous.income, isPositiveGood: true },
+    { label: 'Expenses', thisMonth: analytics.totalExpenses, lastMonth: analytics.previous.expenses, isPositiveGood: false },
+    { label: 'Savings', thisMonth: analytics.netSavings, lastMonth: analytics.previous.savings, isPositiveGood: true },
+  ];
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -30,11 +36,11 @@ export default function ComparisonSnapshot() {
       </div>
 
       <div className="flex flex-col gap-5">
-        {COMPARISONS.map((item, i) => {
+        {comparisons.map((item, i) => {
           const maxVal = Math.max(item.thisMonth, item.lastMonth);
           const thisPct = (item.thisMonth / maxVal) * 100;
           const lastPct = (item.lastMonth / maxVal) * 100;
-          const change = ((item.thisMonth - item.lastMonth) / item.lastMonth) * 100;
+          const change = item.lastMonth ? ((item.thisMonth - item.lastMonth) / item.lastMonth) * 100 : 0;
           const isPositive = change > 0;
           const isGood = isPositive === item.isPositiveGood;
           const chipColor = isGood ? 'text-tertiary bg-tertiary/10' : 'text-error bg-error/10';

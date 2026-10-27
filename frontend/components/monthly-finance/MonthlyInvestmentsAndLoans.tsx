@@ -56,7 +56,7 @@ export default function MonthlyInvestmentsAndLoans({
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            Investments (${totalInvestments.toLocaleString()})
+            Investments (₹{totalInvestments.toLocaleString('en-IN')})
           </button>
           <button
             type="button"
@@ -67,7 +67,7 @@ export default function MonthlyInvestmentsAndLoans({
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            Loans &amp; EMIs (${totalLoansEmi.toLocaleString()})
+            Loans &amp; EMIs (₹{totalLoansEmi.toLocaleString('en-IN')})
           </button>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function MonthlyInvestmentsAndLoans({
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[16px] font-bold text-sky-400">${totalInvestments.toLocaleString()}</span>
+                  <span className="text-[16px] font-bold text-sky-400">₹{totalInvestments.toLocaleString('en-IN')}</span>
                   <p className="text-[10px] text-on-surface-variant">5 Active Allocations</p>
                 </div>
               </div>
@@ -117,7 +117,7 @@ export default function MonthlyInvestmentsAndLoans({
 
                     <div className="text-right">
                       <div className="text-[13px] font-bold text-on-surface">
-                        ${inv.amount.toLocaleString()}
+                        ₹{inv.amount.toLocaleString('en-IN')}
                       </div>
                       <div className="flex items-center justify-end gap-1 text-[11px] text-emerald-400 mt-0.5">
                         <CheckCircle2 size={11} />
@@ -156,7 +156,7 @@ export default function MonthlyInvestmentsAndLoans({
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[16px] font-bold text-amber-400">${totalLoansEmi.toLocaleString()}</span>
+                  <span className="text-[16px] font-bold text-amber-400">₹{totalLoansEmi.toLocaleString('en-IN')}</span>
                   <p className="text-[10px] text-on-surface-variant">2 Active Loans</p>
                 </div>
               </div>
@@ -175,7 +175,7 @@ export default function MonthlyInvestmentsAndLoans({
                       </div>
                       <div className="text-right">
                         <div className="text-[14px] font-bold text-amber-400">
-                          ${loan.emiAmount.toLocaleString()}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
+                          ₹{loan.emiAmount.toLocaleString('en-IN')}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
                         </div>
                         <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">
                           Auto-Debit Active

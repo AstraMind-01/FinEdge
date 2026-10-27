@@ -11,9 +11,12 @@ interface CustomReportModalProps {
 }
 
 export default function CustomReportModal({ isOpen, onClose }: CustomReportModalProps) {
-  const { transactions, accounts } = useAccounts();
-  const [startDate, setStartDate] = useState("2026-08-01");
-  const [endDate, setEndDate] = useState("2026-08-31");
+  const { transactions } = useAccounts();
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reportFormat, setReportFormat] = useState<"PDF" | "CSV">("PDF");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,7 +28,13 @@ export default function CustomReportModal({ isOpen, onClose }: CustomReportModal
 
     setTimeout(() => {
       // Calculate dynamic data
-      const sampleTransactions = transactions.map(t => ({
+      const filteredTransactions = transactions.filter(t => {
+        const categoryMatches = selectedCategory === "ALL" || (t.category || "General") === selectedCategory;
+        const parsed = new Date(t.timestamp || t.date || "");
+        const dateMatches = Number.isNaN(parsed.getTime()) || (parsed >= new Date(startDate) && parsed <= new Date(`${endDate}T23:59:59`));
+        return categoryMatches && dateMatches;
+      });
+      const sampleTransactions = filteredTransactions.map(t => ({
         date: t.date || "Today",
         description: t.merchantName || t.category || "Transaction",
         category: t.category || "General",
@@ -33,30 +42,31 @@ export default function CustomReportModal({ isOpen, onClose }: CustomReportModal
         type: t.type === "CREDIT" ? "CREDIT" as const : "DEBIT" as const,
       }));
 
-      const totalIncome = transactions.filter(t => t.type === "CREDIT").reduce((acc, t) => acc + Math.abs(t.amount), 86500);
-      const totalExpenses = transactions.filter(t => t.type === "DEBIT").reduce((acc, t) => acc + Math.abs(t.amount), 48650);
+      const totalIncome = filteredTransactions.filter(t => t.type === "CREDIT").reduce((acc, t) => acc + Math.abs(t.amount), 0);
+      const totalExpenses = filteredTransactions.filter(t => t.type === "DEBIT").reduce((acc, t) => acc + Math.abs(t.amount), 0);
+      const investmentActivity = filteredTransactions
+        .filter(t => t.type === "DEBIT" && /invest/i.test(t.category || ""))
+        .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+      const categoryTotals = new Map<string, number>();
+      filteredTransactions.filter(t => t.type === "DEBIT").forEach(t => {
+        const name = t.category || "Other";
+        categoryTotals.set(name, (categoryTotals.get(name) || 0) + Math.abs(t.amount));
+      });
+      const categoryBreakdown = [...categoryTotals.entries()].map(([name, amount]) => ({
+        name,
+        amount,
+        percentage: totalExpenses ? Math.round((amount / totalExpenses) * 100) : 0,
+      })).sort((a, b) => b.amount - a.amount);
 
       const exportData = {
         timeframe: `Custom Range (${startDate} to ${endDate})`,
         totalIncome,
         totalExpenses,
         netSavings: totalIncome - totalExpenses,
-        investments: 124000,
-        creditScore: 782,
-        categoryBreakdown: [
-          { name: "Shopping", amount: 15552, percentage: 32 },
-          { name: "Food & Dining", amount: 11676, percentage: 24 },
-          { name: "Bills & Utilities", amount: 9243, percentage: 19 },
-          { name: "Travel", amount: 6811, percentage: 14 },
-          { name: "Health", amount: 3405, percentage: 7 },
-          { name: "Others", amount: 1946, percentage: 4 },
-        ],
-        transactions: sampleTransactions.length > 0 ? sampleTransactions : [
-          { date: "10 Aug 2026", description: "Amazon.in", category: "Shopping", amount: 2499, type: "DEBIT" as const },
-          { date: "09 Aug 2026", description: "TechCorp Salary", category: "Salary", amount: 86500, type: "CREDIT" as const },
-          { date: "08 Aug 2026", description: "Starbucks Coffee", category: "Food & Dining", amount: 450, type: "DEBIT" as const },
-          { date: "07 Aug 2026", description: "Airtel Broadband", category: "Bills & Utilities", amount: 1179, type: "DEBIT" as const },
-        ],
+        investments: investmentActivity,
+        creditScore: 0,
+        categoryBreakdown,
+        transactions: sampleTransactions,
       };
 
       if (reportFormat === "PDF") {

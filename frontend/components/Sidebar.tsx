@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Wallet, ReceiptText, ArrowLeftRight, 
   CreditCard, Landmark, TrendingUp, UserCheck, 
   Users, ShieldAlert, Bell, BarChart3, ShieldCheck, Headphones,
-  ChevronDown, ChevronUp, Send, CalendarClock, Globe2, PiggyBank
+  ChevronDown, ChevronUp, Send, CalendarClock, Globe2, PiggyBank, CalendarRange
 } from 'lucide-react';
 import SupportChatModal from './modals/SupportChatModal';
 
@@ -128,6 +128,11 @@ export default function Sidebar() {
           <Link aria-current={pathname === "/reports" ? "page" : undefined} className={getLinkClasses(pathname === "/reports")} href="/reports">
             <BarChart3 className="mr-3 shrink-0" size={18} />
             <span className="text-[13px] truncate">Reports &amp; Analytics</span>
+          </Link>
+
+          <Link aria-current={pathname === "/monthly-finance" ? "page" : undefined} className={getLinkClasses(pathname === "/monthly-finance")} href="/monthly-finance">
+            <CalendarRange className="mr-3 shrink-0" size={18} />
+            <span className="text-[13px] truncate">Monthly Overview</span>
           </Link>
         </nav>
 

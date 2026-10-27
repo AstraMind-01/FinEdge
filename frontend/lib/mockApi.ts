@@ -441,12 +441,16 @@ let loanApplications: LoanApplication[] = [
 ];
 
 let transactions: Transaction[] = [
-  { id: "TX-001", accountId: "ACC-001", merchantName: "TechCorp Salary", amount: 145000, date: "Yesterday, 09:00 AM", type: "CREDIT", category: "Salary" },
-  { id: "TX-002", accountId: "ACC-001", merchantName: "Amazon.in", amount: -4599, date: "Today, 10:42 AM", type: "DEBIT", category: "Shopping" },
-  { id: "TX-003", accountId: "ACC-001", merchantName: "Zomato", amount: -850.50, date: "24 Oct, 08:30 PM", type: "DEBIT", category: "Food" },
-  { id: "TX-004", accountId: "ACC-002", merchantName: "Business Payment", amount: 120000, date: "22 Oct, 11:15 AM", type: "CREDIT", category: "Transfer" },
-  { id: "TX-005", accountId: "ACC-002", merchantName: "Vendor Payment", amount: -35000, date: "21 Oct, 04:20 PM", type: "DEBIT", category: "Transfer" },
-  { id: "TX-006", accountId: "ACC-001", merchantName: "Rahul Kumar", amount: -12000, date: "23 Oct, 02:15 PM", type: "DEBIT", category: "Transfer" },
+  { id: "TX-001", accountId: "ACC-001", merchantName: "TechCorp Salary", amount: 145000, date: "26 Oct 2026", timestamp: "2026-10-26T09:00:00+05:30", type: "CREDIT", category: "Salary", status: "SUCCESS" },
+  { id: "TX-002", accountId: "ACC-001", merchantName: "Amazon.in", amount: -4599, date: "27 Oct 2026", timestamp: "2026-10-27T10:42:00+05:30", type: "DEBIT", category: "Shopping", status: "SUCCESS" },
+  { id: "TX-003", accountId: "ACC-001", merchantName: "Zomato", amount: -850.50, date: "24 Oct 2026", timestamp: "2026-10-24T20:30:00+05:30", type: "DEBIT", category: "Food", status: "SUCCESS" },
+  { id: "TX-004", accountId: "ACC-002", merchantName: "Business Payment", amount: 120000, date: "22 Oct 2026", timestamp: "2026-10-22T11:15:00+05:30", type: "CREDIT", category: "Transfer", status: "SUCCESS" },
+  { id: "TX-005", accountId: "ACC-002", merchantName: "Vendor Payment", amount: -35000, date: "21 Oct 2026", timestamp: "2026-10-21T16:20:00+05:30", type: "DEBIT", category: "Transfer", status: "SUCCESS" },
+  { id: "TX-006", accountId: "ACC-001", merchantName: "Rahul Kumar", amount: -12000, date: "23 Oct 2026", timestamp: "2026-10-23T14:15:00+05:30", type: "DEBIT", category: "Transfer", status: "SUCCESS" },
+  { id: "TX-007", accountId: "ACC-001", merchantName: "Nifty 50 Index Fund", amount: -15000, date: "20 Oct 2026", timestamp: "2026-10-20T10:00:00+05:30", type: "DEBIT", category: "Investment", status: "SUCCESS" },
+  { id: "TX-008", accountId: "ACC-001", merchantName: "Home Loan EMI", amount: -23500, date: "15 Oct 2026", timestamp: "2026-10-15T08:00:00+05:30", type: "DEBIT", category: "Bills", status: "SUCCESS" },
+  { id: "TX-009", accountId: "ACC-001", merchantName: "Electricity Bill", amount: -2450, date: "12 Oct 2026", timestamp: "2026-10-12T18:10:00+05:30", type: "DEBIT", category: "Bills", status: "SUCCESS" },
+  { id: "TX-010", accountId: "ACC-001", merchantName: "Flight Booking", amount: -8900, date: "08 Oct 2026", timestamp: "2026-10-08T13:45:00+05:30", type: "DEBIT", category: "Travel", status: "SUCCESS" },
 ];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -808,11 +812,7 @@ export const MockApi = {
   getExchangeRates: async (): Promise<ExchangeRate[]> => {
     await delay(100);
     return [
-      { currency: "USD", countryCode: "US", rate: 83.42, trend: "up" },
-      { currency: "EUR", countryCode: "EU", rate: 90.15, trend: "up" },
-      { currency: "GBP", countryCode: "GB", rate: 105.60, trend: "down" },
-      { currency: "AED", countryCode: "AE", rate: 22.71, trend: "up" },
-      { currency: "SGD", countryCode: "SG", rate: 61.85, trend: "down" }
+      { currency: "INR", countryCode: "IN", rate: 1, trend: "up" }
     ];
   },
   submitLoanApplication: async (data: Partial<LoanApplication>): Promise<LoanApplication> => {

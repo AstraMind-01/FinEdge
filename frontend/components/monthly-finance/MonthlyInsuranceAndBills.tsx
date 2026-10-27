@@ -37,7 +37,7 @@ export default function MonthlyInsuranceAndBills({
             </div>
             <div className="text-right">
               <span className="text-[16px] font-bold text-indigo-400">
-                ${totalInsurance.toLocaleString()}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
+                ₹{totalInsurance.toLocaleString('en-IN')}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
               </span>
               <p className="text-[10px] text-on-surface-variant">3 Active Policies</p>
             </div>
@@ -62,7 +62,7 @@ export default function MonthlyInsuranceAndBills({
 
                 <div className="text-right">
                   <div className="text-[13px] font-bold text-on-surface">
-                    ${ins.premiumAmount.toLocaleString()}<span className="text-[10px] text-on-surface-variant font-normal">/mo</span>
+                    ₹{ins.premiumAmount.toLocaleString('en-IN')}<span className="text-[10px] text-on-surface-variant font-normal">/mo</span>
                   </div>
                   <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     ins.status === 'Active' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
@@ -99,7 +99,7 @@ export default function MonthlyInsuranceAndBills({
             </div>
             <div className="text-right">
               <span className="text-[16px] font-bold text-purple-400">
-                ${totalSubscriptions.toLocaleString()}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
+                ₹{totalSubscriptions.toLocaleString('en-IN')}<span className="text-[11px] text-on-surface-variant font-normal">/mo</span>
               </span>
               <p className="text-[10px] text-on-surface-variant">5 Subscriptions</p>
             </div>
@@ -122,7 +122,7 @@ export default function MonthlyInsuranceAndBills({
 
                 <div className="text-right">
                   <div className="text-[13px] font-bold text-on-surface">
-                    ${sub.amount.toLocaleString()}<span className="text-[10px] text-on-surface-variant font-normal">/mo</span>
+                    ₹{sub.amount.toLocaleString('en-IN')}<span className="text-[10px] text-on-surface-variant font-normal">/mo</span>
                   </div>
                   <div className="flex items-center justify-end gap-1 text-[11px] text-emerald-400 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />

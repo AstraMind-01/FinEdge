@@ -269,7 +269,7 @@ export default function CardsRightSidebar({ card, offers }: CardsRightSidebarPro
                     <CheckCircle2 size={14} className="text-primary" /> Unlimited Airport Lounge Visits worldwide
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-primary" /> $50,000 Complimentary Emergency Travel Insurance
+                    <CheckCircle2 size={14} className="text-primary" /> ₹50,00,000 Complimentary Emergency Travel Insurance
                   </li>
                 </ul>
 

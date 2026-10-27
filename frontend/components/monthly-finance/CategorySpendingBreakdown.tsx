@@ -40,7 +40,7 @@ export default function CategorySpendingBreakdown({
         <div className="bg-surface-container border border-white/10 p-2.5 rounded-xl shadow-2xl text-[12px] backdrop-blur-md">
           <p className="font-semibold text-on-surface">{data.name}</p>
           <p className="text-primary font-medium mt-0.5">
-            ${data.value.toLocaleString()} ({Math.round((data.value / totalSpending) * 100)}%)
+            ₹{data.value.toLocaleString('en-IN')} ({Math.round((data.value / totalSpending) * 100)}%)
           </p>
         </div>
       );
@@ -87,7 +87,7 @@ export default function CategorySpendingBreakdown({
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-[11px] text-on-surface-variant font-medium">Total Spent</span>
             <span className="text-[16px] font-bold text-on-surface">
-              ${totalSpending.toLocaleString()}
+              ₹{totalSpending.toLocaleString('en-IN')}
             </span>
           </div>
         </div>
@@ -112,8 +112,8 @@ export default function CategorySpendingBreakdown({
                     <span className="font-medium text-on-surface">{cat.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-on-surface">${cat.amount.toLocaleString()}</span>
-                    <span className="text-on-surface-variant text-[11px]">/ ${cat.budget.toLocaleString()}</span>
+                    <span className="font-semibold text-on-surface">₹{cat.amount.toLocaleString('en-IN')}</span>
+                    <span className="text-on-surface-variant text-[11px]">/ ₹{cat.budget.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
 

@@ -219,7 +219,7 @@ export default function SystemSettings() {
                         <div>
                           <label className="block text-xs uppercase tracking-wider text-[#9c8f7a] mb-1.5">Default Currency</label>
                           <select className="w-full bg-[#191f2f] border rounded-lg px-4 py-2 text-sm outline-none appearance-none" style={{ borderColor: "#2f3445", color: "#dde2f8" }}>
-                            <option>INR (₹) - Indian Rupee</option><option>USD ($) - US Dollar</option>
+                            <option>INR (₹) - Indian Rupee</option>
                           </select>
                         </div>
                         <div>
@@ -395,7 +395,7 @@ export default function SystemSettings() {
                           </tr>
                           <tr>
                             <td className="py-4 text-[#dde2f8]">International Transfer</td>
-                            <td className="py-4"><input type="text" defaultValue="$ 10,000" className="bg-[#191f2f] border border-[#2f3445] rounded px-2 py-1 w-24 outline-none text-[#dde2f8]" /></td>
+                            <td className="py-4"><input type="text" defaultValue="₹ 10,000" className="bg-[#191f2f] border border-[#2f3445] rounded px-2 py-1 w-24 outline-none text-[#dde2f8]" /></td>
                             <td className="py-4 text-[#d4c5ad]">Premium Only</td>
                             <td className="py-4 text-right"><Toggle active={false} /></td>
                           </tr>

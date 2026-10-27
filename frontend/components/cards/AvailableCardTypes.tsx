@@ -60,7 +60,7 @@ export default function AvailableCardTypes({ onCardApplied }: AvailableCardTypes
       desc: "Load multiple currencies and travel the world cashless.",
       bg: "from-green-900/30 to-transparent",
       borderColor: "border-green-800/50",
-      variants: ["Global Multi-Currency Pass", "USD World Pass", "EUR EuroTraveler"]
+      variants: ["Global Rupee Pass", "INR World Pass", "Rupee Traveller"]
     }
   ];
 

@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import { FileText, Download, Loader2, Check } from 'lucide-react';
-import { exportReportToCSV } from '../../lib/reportExporter';
-import { generateAndDownloadCentralPDF } from '../../lib/pdfService';
-import { useAccounts } from '../../context/AccountContext';
+import { exportReportToCSV, exportReportToPrintablePDF } from '../../lib/reportExporter';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const REPORTS = [
   { label: 'Monthly Summary', desc: 'Income, expenses & savings overview', icon: '📊', type: 'PDF' as const },
@@ -15,8 +14,7 @@ const REPORTS = [
 
 type GenState = 'idle' | 'generating' | 'done';
 
-export default function ReportTemplates() {
-  const { transactions } = useAccounts();
+export default function ReportTemplates({ analytics }: { analytics: ReportAnalytics }) {
   const [states, setStates] = useState<Record<number, GenState>>({});
 
   const handleGenerate = (i: number) => {
@@ -27,7 +25,7 @@ export default function ReportTemplates() {
       setStates(prev => ({ ...prev, [i]: 'done' }));
 
       const template = REPORTS[i];
-      const sampleTransactions = transactions.map(t => ({
+      const sampleTransactions = analytics.transactions.map(t => ({
         date: t.date || "Today",
         description: t.merchantName || t.category || "Transaction",
         category: t.category || "General",
@@ -37,35 +35,23 @@ export default function ReportTemplates() {
 
       const exportData = {
         timeframe: `Report Statement — ${template.label}`,
-        totalIncome: 86500,
-        totalExpenses: 48650,
-        netSavings: 37850,
-        investments: 124000,
-        creditScore: 782,
-        categoryBreakdown: [
-          { name: "Shopping", amount: 15552, percentage: 32 },
-          { name: "Food & Dining", amount: 11676, percentage: 24 },
-          { name: "Bills & Utilities", amount: 9243, percentage: 19 },
-          { name: "Travel", amount: 6811, percentage: 14 },
-          { name: "Health", amount: 3405, percentage: 7 },
-          { name: "Others", amount: 1946, percentage: 4 },
-        ],
-        transactions: sampleTransactions.length > 0 ? sampleTransactions : [
-          { date: "10 Aug 2026", description: "Amazon.in", category: "Shopping", amount: 2499, type: "DEBIT" as const },
-          { date: "09 Aug 2026", description: "TechCorp Salary", category: "Salary", amount: 86500, type: "CREDIT" as const },
-          { date: "08 Aug 2026", description: "Starbucks Coffee", category: "Food & Dining", amount: 450, type: "DEBIT" as const },
-          { date: "07 Aug 2026", description: "Airtel Broadband", category: "Bills & Utilities", amount: 1179, type: "DEBIT" as const },
-        ],
+        totalIncome: analytics.totalIncome,
+        totalExpenses: analytics.totalExpenses,
+        netSavings: analytics.netSavings,
+        investments: analytics.investmentActivity,
+        creditScore: 0,
+        categoryBreakdown: analytics.categories,
+        transactions: sampleTransactions,
       };
 
       if (template.label === 'Monthly Summary') {
-        generateAndDownloadCentralPDF({ documentType: 'MONTHLY_SUMMARY', period: 'This Month', transactions });
+        exportReportToPrintablePDF(exportData, 'Monthly Financial Summary');
       } else if (template.label === 'Tax Statement') {
-        generateAndDownloadCentralPDF({ documentType: 'TAX_STATEMENT', period: 'AY 2025-26' });
+        exportReportToPrintablePDF(exportData, 'Tax Transaction Statement');
       } else if (template.label === 'Investment Report') {
-        generateAndDownloadCentralPDF({ documentType: 'INVESTMENT_REPORT', format: 'CSV' });
+        exportReportToCSV(exportData, 'FinEdge_Investment_Report.csv');
       } else if (template.label === 'Loan Amortization') {
-        generateAndDownloadCentralPDF({ documentType: 'LOAN_AMORTIZATION', entityId: 'LN-2026-8819' });
+        exportReportToPrintablePDF(exportData, 'Loan Payment Activity');
       }
 
       // Reset state after 3 seconds so user can generate again if needed

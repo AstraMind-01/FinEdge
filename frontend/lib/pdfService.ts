@@ -55,23 +55,33 @@ export async function generateAndDownloadCentralPDF(options: GeneratePdfOptions)
     // 2. Select specific feature builder based on documentType
     switch (options.documentType) {
       case 'MONTHLY_SUMMARY': {
+        const reportTransactions = options.transactions || [];
+        const totalIncome = reportTransactions
+          .filter(transaction => transaction.type === 'CREDIT')
+          .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+        const totalExpenses = reportTransactions
+          .filter(transaction => transaction.type === 'DEBIT')
+          .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+        const categoryTotals = new Map<string, number>();
+        reportTransactions.filter(transaction => transaction.type === 'DEBIT').forEach(transaction => {
+          const category = transaction.category || 'Others';
+          categoryTotals.set(category, (categoryTotals.get(category) || 0) + Math.abs(transaction.amount));
+        });
+        const categoryBreakdown = [...categoryTotals.entries()].map(([name, amount]) => ({
+          name,
+          amount,
+          percentage: totalExpenses ? Math.round((amount / totalExpenses) * 100) : 0,
+        }));
         MonthlySummaryPdfBuilder.generate({
           userProfile: profile,
           account: options.account,
           period: periodStr,
-          totalIncome: apiData?.totalIncome || 86500,
-          totalExpenses: apiData?.totalExpenses || 48650,
-          netSavings: apiData?.netSavings || 37850,
-          creditScore: apiData?.creditScore || 782,
-          categoryBreakdown: apiData?.categoryBreakdown || [
-            { name: 'Shopping', amount: 15552, percentage: 32 },
-            { name: 'Food & Dining', amount: 11676, percentage: 24 },
-            { name: 'Bills & Utilities', amount: 9243, percentage: 19 },
-            { name: 'Travel', amount: 6811, percentage: 14 },
-            { name: 'Health', amount: 3405, percentage: 7 },
-            { name: 'Others', amount: 1946, percentage: 4 },
-          ],
-          transactions: options.transactions || [],
+          totalIncome: apiData?.totalIncome ?? totalIncome,
+          totalExpenses: apiData?.totalExpenses ?? totalExpenses,
+          netSavings: apiData?.netSavings ?? (totalIncome - totalExpenses),
+          creditScore: apiData?.creditScore ?? 0,
+          categoryBreakdown: apiData?.categoryBreakdown ?? categoryBreakdown,
+          transactions: reportTransactions,
         });
         break;
       }

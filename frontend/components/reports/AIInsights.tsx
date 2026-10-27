@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, AlertTriangle, Coffee, ShoppingBag, Send } from 'lucide-react';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const INSIGHTS = [
   {
@@ -54,17 +55,24 @@ function TypewriterText({ text, active }: { text: string; active: boolean }) {
   return <span>{displayed}{active && displayed.length < text.length && <span className="inline-block w-0.5 h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom" />}</span>;
 }
 
-export default function AIInsights() {
-  const [insightsList, setInsightsList] = useState(INSIGHTS);
+export default function AIInsights({ analytics }: { analytics: ReportAnalytics }) {
+  const topCategory = analytics.categories[0];
+  const dynamicInsights = [
+    { icon: TrendingUp, iconColor: 'text-tertiary', iconBg: 'bg-tertiary/10', text: `Net savings for the selected period are ₹${analytics.netSavings.toLocaleString('en-IN')}.`, delay: 300 },
+    { icon: ShoppingBag, iconColor: 'text-secondary', iconBg: 'bg-secondary/10', text: topCategory ? `${topCategory.name} is your largest spending category at ₹${topCategory.amount.toLocaleString('en-IN')} (${topCategory.percentage}%).` : 'No spending transactions are available for this period.', delay: 900 },
+  ];
+  const [insightsList, setInsightsList] = useState(dynamicInsights);
   const [visibleInsights, setVisibleInsights] = useState<number[]>([]);
   const [query, setQuery] = useState('');
   const [isAsking, setIsAsking] = useState(false);
 
   useEffect(() => {
-    INSIGHTS.forEach((ins, i) => {
+    setInsightsList(dynamicInsights);
+    setVisibleInsights([]);
+    dynamicInsights.forEach((ins, i) => {
       setTimeout(() => setVisibleInsights(prev => [...prev, i]), ins.delay);
     });
-  }, []);
+  }, [analytics.netSavings, analytics.totalExpenses]);
 
   const handleAskAI = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -74,15 +82,17 @@ export default function AIInsights() {
     setQuery('');
     setIsAsking(true);
 
-    let answerText = "Based on your transaction history, your highest spending category this month is Shopping (32%), followed by Food & Dining (24%). You are on track to save ₹37.9K!";
+    let answerText = `For this period, income is ₹${analytics.totalIncome.toLocaleString('en-IN')}, expenses are ₹${analytics.totalExpenses.toLocaleString('en-IN')}, and net savings are ₹${analytics.netSavings.toLocaleString('en-IN')}.`;
     const qLower = userQuestion.toLowerCase();
 
     if (qLower.includes('dining') || qLower.includes('food')) {
-      answerText = "You spent ₹11,676 on Food & Dining across 14 transactions this month, averaging ₹834 per visit.";
+      const food = analytics.categories.find(c => /food|dining/i.test(c.name));
+      answerText = food ? `Food and dining spending is ₹${food.amount.toLocaleString('en-IN')} (${food.percentage}% of expenses).` : 'No food or dining transactions were found in this period.';
     } else if (qLower.includes('save') || qLower.includes('savings')) {
-      answerText = "Your current savings rate is 43.8% (₹37,850 saved out of ₹86,500 income). You can save an extra ₹5,200 by cutting non-essential shopping.";
+      answerText = `Your current savings are ₹${analytics.netSavings.toLocaleString('en-IN')}, a ${analytics.totalIncome ? Math.round(analytics.netSavings / analytics.totalIncome * 100) : 0}% savings rate.`;
     } else if (qLower.includes('bill') || qLower.includes('utility')) {
-      answerText = "Your total utility bills were ₹9,243 this month, including Broadband (₹1,179) and Electricity (₹3,420).";
+      const bills = analytics.categories.find(c => /bill|utilit/i.test(c.name));
+      answerText = bills ? `Bills and utilities total ₹${bills.amount.toLocaleString('en-IN')}.` : 'No bill or utility transactions were found in this period.';
     } else if (qLower.includes('invest') || qLower.includes('wealth')) {
       answerText = "You have ₹124,000 invested across Mutual Funds (₹85K) and Fixed Deposits (₹39K), yielding +5.1% returns vs last month.";
     }

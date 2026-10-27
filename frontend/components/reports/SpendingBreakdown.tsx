@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ReportAnalytics } from '../../lib/reportAnalytics';
 
 const CATEGORIES = [
   { label: 'Shopping', pct: 32, amount: 15552, color: '#c6bfff' },
@@ -14,7 +15,7 @@ const CATEGORIES = [
 const TOTAL = 48633;
 const CIRC = 2 * Math.PI * 56;
 
-function DonutChart({ activeIdx, onHover }: { activeIdx: number | null; onHover: (i: number | null) => void }) {
+function DonutChart({ activeIdx, onHover, categories, total }: { activeIdx: number | null; onHover: (i: number | null) => void; categories: typeof CATEGORIES; total: number }) {
   const [animated, setAnimated] = useState(false);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ function DonutChart({ activeIdx, onHover }: { activeIdx: number | null; onHover:
   }, []);
 
   let offset = 0;
-  const segments = CATEGORIES.map((cat, i) => {
+  const segments = categories.map((cat, i) => {
     const dash = (cat.pct / 100) * CIRC;
     const seg = { ...cat, dash, offset, index: i };
     offset += dash;
@@ -61,17 +62,20 @@ function DonutChart({ activeIdx, onHover }: { activeIdx: number | null; onHover:
       <div className="absolute inset-0 flex flex-col items-center justify-center rotate-0 text-center">
         <span className="text-[11px] text-on-surface-variant uppercase tracking-wider">Total Spent</span>
         <span className="text-[18px] font-headline-lg font-bold text-on-surface mt-0.5">
-          ₹{(TOTAL / 1000).toFixed(1)}K
+          ₹{(total / 1000).toFixed(1)}K
         </span>
       </div>
     </div>
   );
 }
 
-export default function SpendingBreakdown() {
+export default function SpendingBreakdown({ analytics }: { analytics: ReportAnalytics }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [barsVisible, setBarsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const displayCategories = analytics.categories.length
+    ? analytics.categories.map((cat, i) => ({ label: cat.name, amount: cat.amount, pct: cat.percentage, color: ['#c6bfff','#57f1db','#ffd481','#ffb4ab','#62fae3','#9c8f7a'][i % 6] }))
+    : CATEGORIES;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -90,10 +94,10 @@ export default function SpendingBreakdown() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start mb-6">
-        <DonutChart activeIdx={activeIdx} onHover={setActiveIdx} />
+        <DonutChart activeIdx={activeIdx} onHover={setActiveIdx} categories={displayCategories} total={analytics.totalExpenses || TOTAL} />
 
         <div className="flex flex-col gap-2.5 flex-1 w-full">
-          {CATEGORIES.map((cat, i) => (
+          {displayCategories.map((cat, i) => (
             <button
               key={cat.label}
               onMouseEnter={() => setActiveIdx(i)}

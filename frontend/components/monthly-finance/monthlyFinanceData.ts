@@ -145,14 +145,14 @@ export function getMonthlyFinanceData(monthKey: string, liveTransactions: any[] 
   ];
 
   const loans: LoanDetail[] = [
-    { id: 'loan-1', loanName: 'Urban Horizon Home Loan', loanType: 'Home Loan', accountNo: 'HL-8839201', emiAmount: 14250, principalAmount: '$180,000', interestRate: '8.40% p.a.', remainingTenure: '14 yrs 2 mos', nextDueDate: 'Oct 15, 2026', autoDebitStatus: 'Enabled' },
-    { id: 'loan-2', loanName: 'EV Green Auto Loan', loanType: 'Auto Loan', accountNo: 'AL-550192', emiAmount: 4000, principalAmount: '$24,500', interestRate: '7.85% p.a.', remainingTenure: '2 yrs 4 mos', nextDueDate: 'Oct 20, 2026', autoDebitStatus: 'Enabled' },
+    { id: 'loan-1', loanName: 'Urban Horizon Home Loan', loanType: 'Home Loan', accountNo: 'HL-8839201', emiAmount: 14250, principalAmount: '₹18,00,000', interestRate: '8.40% p.a.', remainingTenure: '14 yrs 2 mos', nextDueDate: 'Oct 15, 2026', autoDebitStatus: 'Enabled' },
+    { id: 'loan-2', loanName: 'EV Green Auto Loan', loanType: 'Auto Loan', accountNo: 'AL-550192', emiAmount: 4000, principalAmount: '₹2,45,000', interestRate: '7.85% p.a.', remainingTenure: '2 yrs 4 mos', nextDueDate: 'Oct 20, 2026', autoDebitStatus: 'Enabled' },
   ];
 
   const insurance: InsuranceDetail[] = [
-    { id: 'ins-1', policyName: 'Star Comprehensive Health Shield', policyType: 'Health', provider: 'Star Health Care', premiumAmount: 3850, frequency: 'Monthly', sumInsured: '$500,000', nextRenewalDate: 'Nov 01, 2026', status: 'Active' },
-    { id: 'ins-2', policyName: 'Max Life Smart Secure Plus', policyType: 'Term Life', provider: 'Max Financial', premiumAmount: 2400, frequency: 'Monthly', sumInsured: '$1,000,000', nextRenewalDate: 'Nov 08, 2026', status: 'Active' },
-    { id: 'ins-3', policyName: 'Bumper-to-Bumper Auto Insurance', policyType: 'Motor / Car', provider: 'HDFC ERGO', premiumAmount: 1200, frequency: 'Monthly', sumInsured: '$28,000 IDV', nextRenewalDate: 'Oct 28, 2026', status: 'Due Soon' },
+    { id: 'ins-1', policyName: 'Star Comprehensive Health Shield', policyType: 'Health', provider: 'Star Health Care', premiumAmount: 3850, frequency: 'Monthly', sumInsured: '₹5,00,000', nextRenewalDate: 'Nov 01, 2026', status: 'Active' },
+    { id: 'ins-2', policyName: 'Max Life Smart Secure Plus', policyType: 'Term Life', provider: 'Max Financial', premiumAmount: 2400, frequency: 'Monthly', sumInsured: '₹10,00,000', nextRenewalDate: 'Nov 08, 2026', status: 'Active' },
+    { id: 'ins-3', policyName: 'Bumper-to-Bumper Auto Insurance', policyType: 'Motor / Car', provider: 'HDFC ERGO', premiumAmount: 1200, frequency: 'Monthly', sumInsured: '₹2,80,000 IDV', nextRenewalDate: 'Oct 28, 2026', status: 'Due Soon' },
   ];
 
   const subscriptions: SubscriptionDetail[] = [
@@ -173,6 +173,105 @@ export function getMonthlyFinanceData(monthKey: string, liveTransactions: any[] 
     { id: 'tx-7', date: 'Oct 02, 2026', title: 'JioFiber Broadband Bill', category: 'Utilities', amount: 1499, type: 'DEBIT', method: 'UPI AutoPay', status: 'Completed' },
     { id: 'tx-8', date: 'Oct 01, 2026', title: 'Apple Store Regent St', category: 'Shopping', amount: 3200, type: 'DEBIT', method: 'Metal Card', status: 'Completed' },
   ];
+
+  const selectedTransactions = liveTransactions.filter(transaction => {
+    const parsed = new Date(transaction.timestamp || transaction.date || '');
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 7) === monthKey;
+  });
+
+  if (selectedTransactions.length > 0) {
+    const liveIncome = selectedTransactions
+      .filter(transaction => transaction.type === 'CREDIT')
+      .reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const debits = selectedTransactions.filter(transaction => transaction.type === 'DEBIT');
+    const isInvestment = (transaction: any) => /invest|fund|sip|nifty|equity|gold|ppf|nps/i.test(`${transaction.category || ''} ${transaction.merchantName || ''}`);
+    const isLoan = (transaction: any) => /loan|emi/i.test(`${transaction.category || ''} ${transaction.merchantName || ''}`);
+    const isInsurance = (transaction: any) => /insurance|premium/i.test(`${transaction.category || ''} ${transaction.merchantName || ''}`);
+    const isSubscription = (transaction: any) => /netflix|spotify|subscription|cloud|gym|broadband/i.test(`${transaction.category || ''} ${transaction.merchantName || ''}`);
+
+    const liveInvestments = debits.filter(isInvestment).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const liveLoans = debits.filter(isLoan).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const liveInsurance = debits.filter(isInsurance).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const liveSubscriptions = debits.filter(isSubscription).reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const regularDebits = debits.filter(transaction => !isInvestment(transaction) && !isLoan(transaction) && !isInsurance(transaction) && !isSubscription(transaction));
+    const liveSpending = regularDebits.reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
+    const liveNetSavings = liveIncome - liveSpending - liveInvestments - liveLoans - liveInsurance - liveSubscriptions;
+
+    const colors = ['#f0b429', '#38bdf8', '#f43f5e', '#a855f7', '#ec4899', '#10b981', '#06b6d4'];
+    const categoryMap = new Map<string, number>();
+    regularDebits.forEach(transaction => {
+      const category = transaction.category || 'Other';
+      categoryMap.set(category, (categoryMap.get(category) || 0) + Math.abs(transaction.amount));
+    });
+    const liveCategories: CategorySpending[] = [...categoryMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, amount], index) => ({
+        id: `live-category-${index}`,
+        name,
+        amount,
+        budget: Math.ceil(amount * 1.15),
+        percentage: liveSpending ? Math.round((amount / liveSpending) * 100) : 0,
+        color: colors[index % colors.length],
+        iconName: name === 'Bills' ? 'Zap' : name === 'Travel' ? 'Fuel' : name === 'Food' ? 'Utensils' : 'ShoppingBag',
+      }));
+
+    const buckets = Array.from({ length: 6 }, (_, index) => ({ income: 0, spending: 0, day: `Day ${index * 5 + 1}-${index === 5 ? 31 : index * 5 + 5}` }));
+    selectedTransactions.forEach(transaction => {
+      const parsed = new Date(transaction.timestamp || transaction.date || '');
+      const bucket = Math.min(5, Math.floor((parsed.getDate() - 1) / 5));
+      if (transaction.type === 'CREDIT') buckets[bucket].income += Math.abs(transaction.amount);
+      else buckets[bucket].spending += Math.abs(transaction.amount);
+    });
+    let cumulative = 0;
+    const liveCashFlow = buckets.map(bucket => {
+      cumulative += bucket.income - bucket.spending;
+      return { ...bucket, cumulativeSavings: cumulative };
+    });
+
+    const liveTimeline: MonthlyTransactionItem[] = selectedTransactions
+      .slice()
+      .sort((a, b) => new Date(b.timestamp || b.date).getTime() - new Date(a.timestamp || a.date).getTime())
+      .map(transaction => ({
+        id: String(transaction.id),
+        date: new Date(transaction.timestamp || transaction.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        title: transaction.merchantName || 'Transaction',
+        category: transaction.category || 'Other',
+        amount: Math.abs(transaction.amount),
+        type: transaction.type,
+        method: transaction.paymentMode || 'FinEdge Account',
+        status: transaction.status === 'PENDING' ? 'Pending' : transaction.status === 'FAILED' ? 'Flagged' : 'Completed',
+      }));
+
+    const liveInvestmentDetails: InvestmentDetail[] = debits.filter(isInvestment).map((transaction, index) => ({
+      id: String(transaction.id), name: transaction.merchantName || 'Investment', category: 'Mutual Fund', amount: Math.abs(transaction.amount),
+      frequency: 'Lump Sum', returnsYTD: 'Tracked', status: 'Invested', nextDate: 'As scheduled',
+    }));
+    const liveLoanDetails: LoanDetail[] = debits.filter(isLoan).map(transaction => ({
+      id: String(transaction.id), loanName: transaction.merchantName || 'Loan EMI', loanType: 'Home Loan', accountNo: transaction.referenceId || 'Connected account',
+      emiAmount: Math.abs(transaction.amount), principalAmount: 'Connected loan', interestRate: 'As contracted', remainingTenure: 'See loan account',
+      nextDueDate: 'Next monthly cycle', autoDebitStatus: 'Enabled',
+    }));
+
+    return {
+      monthKey,
+      monthLabel: AVAILABLE_MONTHS.find(month => month.key === monthKey)?.label || new Date(`${monthKey}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+      totalIncome: liveIncome,
+      totalSpending: liveSpending,
+      netSavings: liveNetSavings,
+      savingsRate: liveIncome ? Math.round((liveNetSavings / liveIncome) * 100) : 0,
+      totalInvestments: liveInvestments,
+      totalLoansEmi: liveLoans,
+      totalInsurance: liveInsurance,
+      totalSubscriptions: liveSubscriptions,
+      categories: liveCategories,
+      cashFlow: liveCashFlow,
+      investments: liveInvestmentDetails,
+      loans: liveLoanDetails,
+      insurance: [],
+      subscriptions: [],
+      transactions: liveTimeline,
+    };
+  }
 
   return {
     monthKey,

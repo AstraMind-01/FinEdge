@@ -30,7 +30,7 @@ export function exportReportToCSV(data: ExportData, filename: string = "FinEdge_
     `Total Income: INR ${data.totalIncome.toLocaleString('en-IN')}`,
     `Total Expenses: INR ${data.totalExpenses.toLocaleString('en-IN')}`,
     `Net Savings: INR ${data.netSavings.toLocaleString('en-IN')}`,
-    `Credit Score: ${data.creditScore}`,
+    ...(data.creditScore > 0 ? [`Credit Score: ${data.creditScore}`] : []),
     "",
     headers.join(","),
     ...rows.map(r => r.join(","))
@@ -83,7 +83,7 @@ export function exportReportToPrintablePDF(data: ExportData, reportTitle: string
           </div>
           <div style="text-align: right;">
             <div style="font-size: 12px; color: #64748b;">Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-            <div style="font-size: 11px; color: #94a3b8;">Account: Premium Savings (••••2840)</div>
+            <div style="font-size: 11px; color: #94a3b8;">Generated from your synchronized FinEdge records</div>
           </div>
         </div>
 

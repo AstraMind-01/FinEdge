@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const SCHEDULED = [
@@ -13,6 +13,19 @@ export default function ScheduledReports() {
   const [toggles, setToggles] = useState<Record<number, boolean>>(
     Object.fromEntries(SCHEDULED.map((s, i) => [i, s.enabled]))
   );
+
+  useEffect(() => {
+    const saved = localStorage.getItem('finedge_scheduled_reports');
+    if (saved) setToggles(JSON.parse(saved));
+  }, []);
+
+  const toggleReport = (index: number) => {
+    setToggles(prev => {
+      const next = { ...prev, [index]: !prev[index] };
+      localStorage.setItem('finedge_scheduled_reports', JSON.stringify(next));
+      return next;
+    });
+  };
 
   return (
     <div className="bg-surface-container-low border border-white/5 rounded-xl p-5 shadow-sm">
@@ -33,7 +46,7 @@ export default function ScheduledReports() {
               </div>
             </div>
             <button
-              onClick={() => setToggles(prev => ({ ...prev, [i]: !prev[i] }))}
+              onClick={() => toggleReport(i)}
               className={`relative w-10 h-5.5 rounded-full transition-all duration-300 shrink-0 ${
                 toggles[i] ? 'bg-primary shadow-[0_0_10px_rgba(255,212,129,0.4)]' : 'bg-surface-container-high'
               }`}
